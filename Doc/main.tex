@@ -1,0 +1,651 @@
+\documentclass{article}
+
+\usepackage{arxiv}  % from the Overleaf "arXiv and Prime AI style" template (arxiv.sty)
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{doi}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{enumitem}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{dsfont}
+
+% ---------- theorem-like environments ----------
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\newtheorem{assumption}{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+% ---------- shortcuts ----------
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\renewcommand{\Pr}{\mathbb{P}}
+\newcommand{\ind}[1]{\mathds{1}\!\left[#1\right]}\newcommand{\Reg}{\mathrm{Reg}}
+\newcommand{\BR}{\mathrm{BR}}
+\newcommand{\UCB}{\mathrm{UCB}}
+
+\title{Learning to Bid Under a Budget: A Batched First-Price Ad Auction with Unknown Click Probabilities}
+
+\renewcommand{\headeright}{A Preprint}
+\renewcommand{\undertitle}{A Preprint}
+\renewcommand{\shorttitle}{Learning to Bid Under a Budget}
+
+\author{
+  Vivek Raj \\
+  IIT Gandhinagar\\
+  \texttt{23110362@iitgn.ac.in} \\
+  \And
+  Anvit Aggarwal \\
+  IIT Gandhinagar\\
+  \texttt{anvit.aggarwal@iitgn.ac.in} \\
+  \And
+  Eshaan Ashish Jaiswal \\
+  IIT Gandhinagar\\
+  \texttt{eshaan.jaiswal@iitgn.ac.in} \\
+  \And
+  Gella Naga Sai Krishna \\
+  IIT Gandhinagar\\
+  \texttt{gella.saikrishna@iitgn.ac.in} \\
+}
+
+\date{September 30, 2026}
+
+\hypersetup{
+  pdftitle={Learning to Bid Under a Budget: A Batched First-Price Ad Auction with Unknown Click Probabilities},
+  pdfauthor={Vivek Raj, Anvit Aggarwal, Eshaan Ashish Jaiswal, Gella Naga Sai Krishna},
+  pdfkeywords={Multi-agent systems, Auction theory, Multi-armed bandits, Knapsack-constrained bidding, Online advertising},
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We study a repeated advertising auction in which several advertisers compete to have their ad shown to a fixed set of users. Each advertiser has a limited budget and does not know, in advance, how likely a given user is to click on its ad; this quantity must be learned through repeated interaction. In each round every advertiser submits a full bid vector over all users, splitting its budget among them; the highest bidder for each user wins and pays its own bid regardless of whether a click occurs. We formalize this as a batched, budget-constrained first-price auction, specify what is known and what must be learned, and show that, when click probabilities are known, an advertiser's best response is a $0$--$1$ knapsack problem. We propose a tiered experimental plan---a known-parameter baseline with equilibrium computation, a single-agent budget-aware combinatorial bandit learner (UCB and Thompson sampling), and a multi-agent setting in which all advertisers learn simultaneously---to measure how learning affects allocation efficiency, advertiser profit, and platform revenue relative to the full-information benchmark.
+\end{abstract}
+
+\keywords{Multi-agent systems \and Auction theory \and Multi-armed bandits \and Knapsack-constrained bidding \and Online advertising}
+
+% =====================================================================
+\section{Introduction}
+\label{sec:intro}
+
+Every time a web page, a video, or a mobile app loads, an invisible marketplace runs in the background: several advertisers would like their ad to appear in front of the visitor, and an automated auction decides who gets the slot and at what price. Online advertising is one of the largest markets built on such auctions, and the platforms that run it act as intermediaries between users on one side and competing advertisers on the other \citep{edelman2007internet,varian2007position}. Two features make the advertisers' problem hard, and they are the focus of this project.
+
+\paragraph{Budgets force trade-offs.} An advertiser cannot win every opportunity it would like. Its budget is finite, so every unit of money spent on one user is a unit that cannot be spent on another. The advertiser therefore faces an \emph{allocation} problem: which users are worth their price, and how much should be offered for each? This is structurally a knapsack problem, in which items (users) have a cost (the price needed to win them) and a value (the expected benefit of showing them the ad), and a fixed capacity (the budget) must be filled as profitably as possible \citep{kellerer2004knapsack}.
+
+\paragraph{Payoffs are uncertain.} An advertiser rarely knows how likely a particular user is to click on its particular ad. This click probability is the key unknown, and it can only be learned by showing the ad and observing what happens. Learning by acting creates the classical \emph{exploration--exploitation} dilemma studied in multi-armed bandits \citep{auer2002finite,slivkins2019introduction,lattimore2020bandit}: bidding on a user one knows little about is costly if the user turns out to be unreceptive, yet never bidding means never finding the valuable users.
+
+\paragraph{Why first-price?} In a \emph{first-price} auction the winner pays exactly what it bid, whether or not the user later clicks. Many display and programmatic advertising exchanges have moved from second-price rules towards first-price rules, which makes the format both practically relevant and strategically richer: because the winner pays its own bid, an advertiser has an incentive to \emph{shade} its bid below its true value, and how much to shade depends on what it believes about the competition \citep{krishna2009auction,vickrey1961counterspeculation}. Sponsored-search theory has mostly analyzed generalized second-price and position auctions \citep{edelman2007internet,varian2007position}; the first-price, budget-constrained, learning setting has received attention in the single-bidder online-learning literature \citep{balseiro2019learning,han2020optimal}, but the interaction of \emph{multiple simultaneously learning, budget-limited agents} remains less well understood.
+
+\paragraph{Problem in one paragraph.} We consider a fixed, known set of users and several advertisers. In every round each advertiser commits to a \emph{full bid vector} over all users before seeing any outcome, splitting its budget among them. The highest bidder for each user wins and pays its own bid. Click probabilities are initially unknown to the advertisers. This ``batched'' structure turns each round into a knapsack problem under uncertainty and connects directly to the \emph{bandits with knapsacks} framework \citep{badanidiyuru2013bandits}, while remaining small enough to be solved and evaluated exactly at course scale.
+
+\paragraph{Guiding question.} \emph{How much worse off are advertisers, and how much less efficient is the resulting allocation, when click probabilities must be learned online rather than being known in advance---and how does this gap change when all advertisers learn at the same time?}
+
+\paragraph{Approach and summary of what we plan to deliver.} We isolate the effect of each assumption with a three-tier study (Section~\ref{sec:solutions}): (i)~a full-information baseline in which best responses are computed by dynamic programming and equilibria are computed for small instances; (ii)~a single budget-aware bandit learner facing opponents that play the baseline; and (iii)~a multi-agent simulation in which every advertiser learns concurrently. For each tier we report regret, advertiser profit, platform revenue, and allocation efficiency, and we study their sensitivity to the number of advertisers, the number of users, the tightness of the budget, and the choice of round structure.
+
+\paragraph{Related work.} Our formulation draws on three lines of research. First, \emph{auction theory} and its application to Internet advertising \citep{vickrey1961counterspeculation,krishna2009auction,edelman2007internet,varian2007position}. Second, \emph{bandits with knapsacks} and combinatorial bandits, which handle learning under resource constraints and under selection of subsets of arms per round \citep{badanidiyuru2013bandits,chen2013combinatorial}. Third, \emph{learning in repeated auctions with budgets} \citep{balseiro2019learning,han2020optimal} and \emph{learning in games} \citep{fudenberg1998theory,shoham2008multiagent}, which study the dynamics that arise when strategic agents adapt to each other.
+
+\paragraph{Paper organization.} Section~\ref{sec:prelim} fixes notation and recalls the relevant definitions. Section~\ref{sec:formulation} states the model formally. Section~\ref{sec:solutions} describes the algorithms and experiments we plan to complete by the final submission. Section~\ref{sec:future} outlines extensions we consider out of scope for the final submission but plan to discuss as future work. Section~\ref{sec:contrib} assigns tasks to team members.
+
+% =====================================================================
+\section{Preliminaries}
+\label{sec:prelim}
+
+\subsection{Notation}
+
+Table~\ref{tab:notation} collects the notation used throughout. We write $[k]=\{1,\dots,k\}$, $\ind{\cdot}$ for the indicator function, and $\Pr,\E$ for probability and expectation.
+
+\begin{table}[h]
+  \caption{Summary of notation.}
+  \centering
+  \begin{tabularx}{\textwidth}{@{}lX@{}}
+    \toprule
+    Symbol & Meaning \\
+    \midrule
+    $U=\{u_1,\dots,u_n\}$ & Fixed, known set of $n$ users \\
+    $A=\{a_1,\dots,a_m\}$ & Set of $m$ advertisers (players) \\
+    $f:U\times A\to[0,1]$ & Click probability; $f_{ij}:=f(u_j,a_i)$; unknown to advertisers \\
+    $v>0$ & Common value of a click \\
+    $B:A\to\N$ & Budget function; $B_i:=B(a_i)$ \\
+    $b_{ij}$ & Bid of advertiser $a_i$ on user $u_j$; $b_i=(b_{i1},\dots,b_{in})$ \\
+    $S_i,\ S=\prod_i S_i$ & Strategy space of $a_i$; joint strategy space \\
+    $c_{-i,j}$ & Highest competing bid on user $u_j$ faced by $a_i$ \\
+    $w_{ij}$ & Win indicator of $a_i$ on $u_j$ (after tie-breaking) \\
+    $q_{ij}$ & Winning probability of $a_i$ on $u_j$ under tie-breaking \\
+    $p_i(\cdot)$ & Utility (profit) of advertiser $a_i$ \\
+    $T$ & Number of rounds; $t$ indexes rounds \\
+    $\gamma\in(0,1)$ & Discount factor (discounted round-structure variant, Remark~\ref{rem:roundvariants}) \\
+    $N_{ij}(t),\ \hat f_{ij}(t)$ & Number of observations and empirical click rate of $(u_j,a_i)$ before round $t$ \\
+    $\Reg_T$ & Cumulative regret after $T$ rounds \\
+    \bottomrule
+  \end{tabularx}
+  \label{tab:notation}
+\end{table}
+
+\subsection{Game-theoretic background}
+
+\begin{definition}[Normal-form game]
+A \emph{normal-form game} is a tuple $(N,\{S_i\}_{i\in N},\{u_i\}_{i\in N})$, where $N$ is a finite set of players, $S_i$ is player $i$'s strategy space, and $u_i:\prod_{j\in N}S_j\to\R$ is player $i$'s utility function.
+\end{definition}
+
+\begin{definition}[Mixed strategy and Nash equilibrium]
+When every $S_i$ is finite, a \emph{mixed strategy} $\sigma_i\in\Delta(S_i)$ is a probability distribution over $S_i$. A profile $\sigma^\ast=(\sigma_1^\ast,\dots,\sigma_m^\ast)$ is a \emph{Nash equilibrium} if for every player $i$ and every $\sigma_i\in\Delta(S_i)$,
+$u_i(\sigma_i^\ast,\sigma_{-i}^\ast)\ge u_i(\sigma_i,\sigma_{-i}^\ast)$.
+Every finite normal-form game has at least one Nash equilibrium in mixed strategies \citep{nash1951noncooperative}.
+\end{definition}
+
+\begin{definition}[Best response and $\varepsilon$-equilibrium gap]
+Given $\sigma_{-i}$, the \emph{best-response value} of player $i$ is $\BR_i(\sigma_{-i}):=\max_{s_i\in S_i}u_i(s_i,\sigma_{-i})$. The \emph{equilibrium gap} (exploitability) of a profile $\sigma$ is
+\[
+\varepsilon(\sigma)\;:=\;\max_{i\in N}\Big(\BR_i(\sigma_{-i})-u_i(\sigma)\Big)\;\ge 0,
+\]
+and $\sigma$ is a Nash equilibrium if and only if $\varepsilon(\sigma)=0$.
+\end{definition}
+
+\begin{definition}[First-price auction]
+In a \emph{first-price auction} each bidder submits a sealed bid; the highest bidder wins and pays its own bid, regardless of the value it ultimately realizes from winning \citep{krishna2009auction}.
+\end{definition}
+
+\subsection{Optimization background}
+
+\begin{definition}[$0$--$1$ knapsack problem]
+Given items $j\in[n]$ with weights $w_j\in\N$, values $r_j\in\R$, and a capacity $B\in\N$, the \emph{$0$--$1$ knapsack problem} is
+\[
+\max_{x\in\{0,1\}^n}\ \sum_{j=1}^n r_j x_j\quad\text{s.t.}\quad \sum_{j=1}^n w_j x_j\le B.
+\]
+It is solvable by dynamic programming in $O(nB)$ time \citep{kellerer2004knapsack}.
+\end{definition}
+
+\subsection{Learning background}
+
+\begin{definition}[Stochastic multi-armed bandit]
+A learner repeatedly chooses an arm $k\in\{1,\dots,K\}$ from a fixed set; arm $k$ returns a reward drawn i.i.d.\ from an unknown distribution with mean $\mu_k$. The \emph{regret} after $T$ rounds is
+\[
+R_T \;=\; T\cdot\max_k\mu_k-\E\Big[\sum_{t=1}^T\mu_{k_t}\Big].
+\]
+\end{definition}
+
+\begin{definition}[Combinatorial (semi-)bandit]
+In each round the learner selects a \emph{subset} of arms feasible under a combinatorial constraint and observes the reward of \emph{each} selected arm (semi-bandit feedback) \citep{chen2013combinatorial}. Arms not selected reveal no information.
+\end{definition}
+
+\begin{definition}[Bandits with knapsacks]
+A generalization of the stochastic bandit in which each pull also consumes a random amount of one or more finite resources (budgets); the learner stops when a budget is exhausted. Algorithms must trade off reward maximization against budget pacing \citep{badanidiyuru2013bandits}.
+\end{definition}
+
+\begin{definition}[UCB index]
+For an arm with $N$ observations and empirical mean $\hat\mu$ after $t$ rounds, the \emph{upper confidence bound} index is $\UCB=\min\{1,\ \hat\mu+\sqrt{\alpha\ln t/N}\}$ (and $\UCB=1$ if $N=0$), where $\alpha>0$ is an exploration parameter; $\alpha=2$ recovers UCB1 for rewards in $[0,1]$ \citep{auer2002finite}.
+\end{definition}
+
+\begin{definition}[Thompson sampling for Bernoulli rewards]
+Maintain a $\mathrm{Beta}(1+s,\,1+N-s)$ posterior for each arm, where $s$ is the number of observed successes among $N$ observations; in each round draw one sample per arm from its posterior and act as if the samples were the true means \citep{thompson1933likelihood,agrawal2012analysis}.
+\end{definition}
+
+% =====================================================================
+\section{Problem Formulation}
+\label{sec:formulation}
+
+\subsection{Primitives}
+Let $U=\{u_1,\dots,u_n\}$ be a fixed, known set of users and $A=\{a_1,\dots,a_m\}$ a set of advertisers. Let
+\[
+f:U\times A\to[0,1]
+\]
+be the (initially unknown) probability that user $u_j$ clicks the ad of advertiser $a_i$, and let $v\in\R^+$ be the fixed value of a click. Each advertiser has a budget $B:A\to\N$.
+
+\begin{assumption}[Integer bids]\label{ass:int}
+Bids are integer-valued, $b_{ij}\in\{0,1,\dots,B_i\}$, consistent with $B:A\to\N$. All strategy spaces are therefore finite.
+\end{assumption}
+
+\subsection{Strategies}
+A strategy for advertiser $a_i$ is a bid vector
+\[
+S_i=\Big\{(b_{i1},\dots,b_{in})\in\{0,\dots,B_i\}^n\ \Big|\ \sum_{j=1}^n b_{ij}\le B_i\Big\},\qquad S=S_1\times\cdots\times S_m .
+\]
+
+\subsection{Allocation and payments}
+For a profile $b\in S$ let $c_{-i,j}=\max_{k\neq i}b_{kj}$ and $M_{-i,j}(b)=|\{k\ne i:\ b_{kj}=b_{ij}\}|$. The winner of user $u_j$ is
+\[
+w(a_i,u_j)=\begin{cases}1 & \text{if } b_{ij}=\max_k b_{kj}\ \text{and}\ \max_k b_{kj}>0,\\ 0 & \text{otherwise,}\end{cases}
+\]
+with ties broken uniformly at random among the maximizers; if $\max_k b_{kj}=0$ no ad is shown and $w(a_i,u_j)=0$ for all $i$. Writing $w_{ij}=w(a_i,u_j)$, after tie-breaking $W(u_j)=\sum_i w_{ij}\in\{0,1\}$. The winning probability is
+\[
+q_{ij}(b)=\begin{cases}
+1 & b_{ij}>c_{-i,j},\\[2pt]
+\dfrac{1}{1+M_{-i,j}(b)} & b_{ij}=c_{-i,j}>0,\\[6pt]
+0 & \text{otherwise.}
+\end{cases}
+\]
+
+\subsection{Utility}
+Let $X_{ij}\sim\mathrm{Bernoulli}(f_{ij})$ denote the (independent) click outcome of user $u_j$ on advertiser $a_i$'s ad. The \emph{realized} utility of $a_i$ in a round is $\sum_j w_{ij}(vX_{ij}-b_{ij})$, and its \emph{expected} utility is
+\[
+p_i(b)\;=\;\sum_{j=1}^{n} q_{ij}(b)\big(f(u_j,a_i)\,v-b_{ij}\big).
+\]
+The winner pays its own bid whether or not a click occurs. \emph{Platform revenue} is $\mathrm{Rev}(b)=\sum_{i,j}q_{ij}(b)\,b_{ij}$ and \emph{expected welfare} is $\mathrm{Wel}(b)=\sum_{i,j}q_{ij}(b)\,f_{ij}\,v$.
+
+\subsection{Information and feedback}
+The repeated game is played over rounds $t=1,\dots,T$ with $U$ and $B$ held fixed at the start of each round; $f$ is unknown and must be learned. After round $t$, advertiser $a_i$ observes, for each user $u_j$ it \emph{won}, the realized click $X^{t}_{ij}\in\{0,1\}$ (and its own payment $b^t_{ij}$); it observes nothing about clicks on users it lost. A learning policy for $a_i$ is a map $\pi_i:\mathcal H^i_{t-1}\to S_i$ from its own history $\mathcal H^i_{t-1}$ to a bid vector.
+
+\begin{assumption}[Opponent information]\label{ass:opp}
+In Tier~2 (Section~\ref{sec:solutions}) the learner additionally observes, after each round, the highest competing bid $c_{-i,j}^t$ on every user, so that the only unknown quantity is $f(\cdot,a_i)$. Relaxing this to win/loss feedback only is an extension.
+\end{assumption}
+
+\subsection{Round structure}
+\label{sec:roundstructure}
+The game is played over a fixed, known number of rounds $T$, and in every round
+$t=1,\dots,T$ each advertiser faces the \emph{same} per-round budget constraint
+$\sum_j b^t_{ij}\le B_i$ --- as with a campaign whose daily budget resets every
+round. This is the \textbf{canonical round structure} used throughout
+Sections~\ref{sec:formulation}--\ref{sec:solutions}: it is the model against which
+the knapsack benchmark~\eqref{eq:knap}, the equilibrium notion, the regret
+definition, and Tiers~1--3 are all stated. Under this structure, the budget
+constrains only the within-round split of $a_i$'s bid vector; it does not carry
+over from one round to the next, so the only channel through which one round
+affects another is learning (an advertiser's belief about $f(\cdot,a_i)$ persists
+across rounds, but its available budget does not). The corresponding objective is
+\[
+\max_{\pi_i}\ \E\Big[\sum_{t=1}^T p_i(b^t)\Big].
+\]
+
+\begin{remark}[Two round-structure variants, studied as a robustness check]
+\label{rem:roundvariants}
+Section~\ref{sec:solutions} (Table~\ref{tab:design}) additionally evaluates our
+learners under two variants of the resource constraint that couple rounds together.
+We do not treat either as part of the core formalization above; we re-use the same
+learners and re-run them under each variant to check whether our qualitative
+conclusions are robust to how the budget is modelled over time.
+\begin{enumerate}[leftmargin=*]
+  \item \emph{Discounted variant.} The same per-round budget constraint as the
+  canonical structure, but utility in round $t$ is discounted by $\gamma^t$ for a
+  fixed $\gamma\in(0,1)$: $\max_{\pi_i}\ \E\big[\sum_{t=1}^\infty \gamma^t p_i(b^t)\big]$.
+  \item \emph{Cumulative-budget variant.} A single budget $B_i$ is shared across all
+  rounds and never replenished; advertiser $a_i$ is excluded from further rounds
+  once its cumulative spend reaches $B_i$. With
+  $\tau_i=\min\{t:\sum_{s\le t}\sum_j w^s_{ij}b^s_{ij}\ge B_i\}$, the objective is
+  $\max_{\pi_i}\ \E\big[\sum_{t<\tau_i}p_i(b^t)\big]$; this is a genuine
+  bandits-with-knapsacks problem in which spending must be paced over time
+  \citep{badanidiyuru2013bandits}.
+\end{enumerate}
+\end{remark}
+
+\subsection{Benchmarks and performance measures}
+\textbf{Full-information best response.} For fixed opponent bids, with known $f$ and using strict wins ($b_{ij}=c_{-i,j}+1$), the best response of $a_i$ solves
+\begin{equation}\label{eq:knap}
+\max_{x\in\{0,1\}^n}\ \sum_{j=1}^n r_{ij}x_j\quad\text{s.t.}\quad\sum_{j=1}^n(c_{-i,j}+1)\,x_j\le B_i,\qquad r_{ij}=f_{ij}v-c_{-i,j}-1,
+\end{equation}
+a $0$--$1$ knapsack with weights $c_{-i,j}+1$ and values $r_{ij}$ (items with $r_{ij}\le0$ are never selected). Tie-bids $b_{ij}=c_{-i,j}$, which win with probability $q_{ij}<1$, are handled as additional item options in small instances. Denote its optimal value by $p_i^\ast(c_{-i})$ and the Nash equilibria of the finite game $(A,\{S_i\},\{p_i\})$ by $\mathcal{E}$ (nonempty in mixed strategies by Nash~\cite{nash1951noncooperative}).
+
+\medskip
+\noindent\textbf{Regret (single learner).} For advertiser $a_i$ facing fixed opponent bids,
+\[
+\Reg^{(i)}_T=\sum_{t=1}^T\Big(p_i^\ast(c^t_{-i})-\E\,p_i(b^t_i,b^t_{-i})\Big).
+\]
+For the discounted variant of Remark~\ref{rem:roundvariants} we use the discounted analogue, and for the cumulative-budget variant the benchmark is the fluid (linear-programming) relaxation of the bandits-with-knapsacks problem.
+
+\medskip
+\noindent\textbf{Multi-agent measures.} For the profile $b^t$ played in round $t$:
+\begin{align*}
+\text{Equilibrium gap:}\quad & \varepsilon_t=\max_i\Big(\max_{b_i'\in S_i}p_i(b_i',b^t_{-i})-p_i(b^t)\Big),\\
+\text{Allocation efficiency:}\quad & \mathrm{Eff}_t=\frac1n\sum_{j=1}^n\ind{\textstyle\sum_{i\in\arg\max_k f_{kj}}w^t_{ij}=1},\\
+\text{Advertiser profit and revenue:}\quad & p_i(b^t),\qquad \mathrm{Rev}(b^t).
+\end{align*}
+Here $\arg\max_i f_{ij}$ is the ``true highest-value advertiser'' for user $u_j$ (since $v$ is common, value is ordered by click probability). All quantities are computed with the true $f$, which is available to the evaluator but never to the learners.
+
+% =====================================================================
+\section{Proposed Solutions}
+\label{sec:solutions}
+
+We follow a ``known model $\to$ learned model'' structure that relaxes one assumption at a time. All experiments are synthetic: click probabilities $f_{ij}$ are drawn from parametrized families (e.g., $\mathrm{Beta}$ distributions with tunable heterogeneity and advertiser--user correlation), $v$ is normalized to $1$, and each configuration is repeated over $30$ independent seeds with means and $95\%$ confidence intervals reported.
+
+\subsection{Tier 1: known parameters (ground truth)}
+With $f$ known, each advertiser's problem against fixed opponents is the knapsack~\eqref{eq:knap}, solved exactly by dynamic programming in $O(nB_i)$ time. When all advertisers optimize simultaneously we compute equilibria of the finite normal-form game as follows:
+\begin{itemize}[leftmargin=*]
+  \item \emph{Best-response dynamics} and \emph{fictitious play} \citep{fudenberg1998theory} to find pure or approximate equilibria on medium instances, monitoring the equilibrium gap $\varepsilon$;
+  \item \emph{Exhaustive support enumeration}, or Lemke--Howson for $m=2$ \citep{lemke1964equilibrium}, on very small instances ($m\le3$, $n\le5$) where the strategy space can be enumerated;
+  \item comparison of the equilibrium outcome against the welfare-maximizing assignment (each user to $\arg\max_i f_{ij}$) to quantify the efficiency loss caused by bid shading and budget limits alone.
+\end{itemize}
+The output of this tier is the reference equilibrium profile $b^\ast$, its per-advertiser profits $p^\ast_i$, revenue, and efficiency, against which every learned policy is compared under the canonical round structure of Section~\ref{sec:roundstructure}.
+
+\subsection{Tier 2: single learner, $f$ unknown}
+One advertiser (the learner) learns $f(\cdot,a_i)$ online while all others play a fixed \emph{pure} profile, namely their Tier-1 equilibrium bids (instances in which Tier~1 yields only a mixed equilibrium are excluded from Tier~2; see Section~\ref{sec:future-mixed}). The competing bids $c_{-i,j}$ are therefore the same in every round. Each round the learner selects a \emph{subset} of users to win, so this is a budget-constrained combinatorial semi-bandit \citep{chen2013combinatorial,badanidiyuru2013bandits}: each user is an arm, the knapsack~\eqref{eq:knap} is the combinatorial constraint, and feedback is observed only for won users. Algorithm~\ref{alg:learner} gives the template; the two variants differ only in how the estimate $\tilde f_j$ is formed.
+
+\begin{algorithm}[h]
+\caption{Budget-aware optimistic/Thompson bidding for advertiser $a_i$ (Tier 2)}
+\label{alg:learner}
+\begin{algorithmic}[1]
+\State Initialize $N_j\gets0$, $s_j\gets0$ for all users $j\in[n]$
+\For{$t=1,\dots,T$}
+  \If{$t=1$}
+    \State Bid $b_{ij}=0$ for all $j$ (no spend, no wins)
+  \Else
+    \State $\hat c_{-i,j}\gets c^{t-1}_{-i,j}$ for all $j$ \Comment{last observed competing bid}
+    \For{each user $j$}
+      \State \textbf{UCB:} $\tilde f_j\gets \min\{1,\ s_j/N_j+\sqrt{\alpha\ln t/N_j}\}$ ($\tilde f_j=1$ if $N_j=0$)
+      \State \textbf{TS:} $\tilde f_j\sim\mathrm{Beta}(1+s_j,\ 1+N_j-s_j)$
+      \State $r_j\gets\tilde f_j v-\hat c_{-i,j}-1$, \quad $w_j\gets \hat c_{-i,j}+1$
+    \EndFor
+    \State Solve knapsack $\max\sum_j r_jx_j$ s.t.\ $\sum_j w_jx_j\le B_i$ by dynamic programming
+    \State Bid $b_{ij}=\hat c_{-i,j}+1$ if $x_j=1$, else $b_{ij}=0$
+    \State \textbf{for} each won user $j$: observe $X_{ij}$; $N_j\gets N_j+1$; $s_j\gets s_j+X_{ij}$
+  \EndIf
+  \State Observe $c^t_{-i,j}$ for every user $j$ (Assumption~\ref{ass:opp})
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+In round 1 the learner bids $0$ on every user, which costs nothing and still reveals the highest competing bid $c^1_{-i,j}$ on every user, including users it did not win; from round 2 onward it uses the last observed value, $\hat c_{-i,j}=c^{t-1}_{-i,j}$. Because the opponents play a fixed pure profile, $\hat c_{-i,j}$ equals the true $c_{-i,j}$ from round 2 on, so the only quantity the learner must estimate is $f(\cdot,a_i)$. The forgone profit of round 1 is counted in $\Reg_T$. Learning under random competing bids, or with win/loss-only feedback, is left to Section~\ref{sec:future-mixed}.
+
+Under the cumulative-budget variant of Remark~\ref{rem:roundvariants}, the per-round knapsack is replaced by a budget-paced version (e.g., a Lagrangian price on remaining budget per remaining expected round, as in bandits with knapsacks). We report cumulative regret $\Reg_T$ against the Tier-1 best response as a function of $T$, compare UCB against Thompson sampling and against greedy and $\epsilon$-greedy baselines, and check whether the empirical regret growth is sublinear in $T$ as one expects from the bandit literature \citep{auer2002finite,agrawal2012analysis}.
+
+\subsection{Tier 3: all advertisers learning simultaneously}
+All $m$ advertisers run Algorithm~\ref{alg:learner} concurrently and bid according to their own estimates. Because opponents' bids now change as they learn, each learner faces a non-stationary environment, and the standard stationary regret guarantees no longer apply; whether play converges to the Tier-1 equilibrium is an empirical question. We measure:
+\begin{itemize}[leftmargin=*]
+  \item the equilibrium gap $\varepsilon_t$ and the distance $\|b^t-b^\ast\|_1$ to the Tier-1 equilibrium as $t$ grows;
+  \item advertiser profit $p_i(b^t)$, platform revenue $\mathrm{Rev}(b^t)$, and allocation efficiency $\mathrm{Eff}_t$ relative to Tier~1;
+  \item the \emph{price of learning}: the difference between the Tier-1 quantities and their learned counterparts after $T$ rounds.
+\end{itemize}
+
+\subsection{Experimental design and sensitivity analysis}
+Table~\ref{tab:design} lists the factors we vary. Budget tightness is defined as $\kappa_i=B_i/\sum_j(c_{-i,j}+1)$, the fraction of the total price of ``buying every user'' that advertiser $a_i$ can afford.
+
+\begin{table}[h]
+  \caption{Planned experimental factors.}
+  \centering
+  \begin{tabular}{@{}lll@{}}
+    \toprule
+    Factor & Values & Purpose \\
+    \midrule
+    Advertisers $m$ & $\{2,3,5\}$ & Effect of competition on learning gap \\
+    Users $n$ & $\{5,10,20,50\}$ & Scaling with number of arms \\
+    Budget tightness $\kappa$ & $\{0.1,0.25,0.5,1\}$ & Scarce vs.\ abundant budgets \\
+    Round structure & canonical, discounted, cumulative (Remark~\ref{rem:roundvariants}) & Robustness of conclusions to the resource constraint \\
+    Learner & UCB, Thompson, greedy & Algorithm comparison \\
+    Horizon $T$ & up to $10^4$ rounds & Regret and convergence rate \\
+    Seeds & 30 & Confidence intervals \\
+    \bottomrule
+  \end{tabular}
+  \label{tab:design}
+\end{table}
+
+\paragraph{Expected findings (hypotheses to test).} (H1) Single-learner regret grows sublinearly in $T$, with Thompson sampling competitive with or better than UCB in practice. (H2) The gap to the Tier-1 equilibrium widens as the number of advertisers grows, because simultaneous learning makes each learner's environment non-stationary. (H3) Tight budgets slow learning, since the learner can afford to win, and therefore observe, fewer users per round; efficiency should degrade most in this regime.
+
+\paragraph{Risks and mitigations.} Equilibria may be non-unique or only in mixed strategies (mitigation: report the gap $\varepsilon$ rather than only distance to one profile); exact equilibrium computation scales poorly (mitigation: restrict exact computation to small instances and use approximate dynamics elsewhere); and tie-breaking introduces discontinuities (mitigation: use strict-win bids by default and treat ties as an ablation).
+
+\subsection{Deliverables by final submission}
+(i)~Tier-1 solver with equilibrium computation; (ii)~UCB and Thompson learners with regret curves; (iii)~multi-agent simulator with convergence data; (iv)~a shared evaluation harness with all plots; (v)~a sensitivity study across the factors in Table~\ref{tab:design}; and (vi)~the final report and presentation.
+
+% =====================================================================
+\section{Future Work}
+\label{sec:future}
+
+The tiered study in Section~\ref{sec:solutions} deliberately keeps four modelling
+choices fixed --- users are treated as unrelated individuals, the auction rule is
+first-price, each advertiser's budget $B_i$ is exogenous and never grows with
+realized profit, and the learner's opponents play a fixed pure profile whose bids
+it observes after each round --- to keep the baseline and its learning algorithms
+tractable. We identify one extension to each of these choices that we consider out
+of scope for the final submission but plan to pursue, time permitting.
+
+\subsection{Contextual click probabilities across users}
+\label{sec:future-context}
+
+In Section~\ref{sec:formulation}, $f_{ij}$ is an independent unknown for every pair
+$(u_j,a_i)$, so Algorithm~\ref{alg:learner} learns $n$ separate quantities per
+advertiser and nothing learned about one user transfers to another. This is wasteful
+when similar users behave similarly and $n$ is large relative to $T$. We propose to
+represent each user by a feature vector $z_j\in\R^d$ (e.g., demographic or
+browsing-history attributes) and to assume the following.
+
+\begin{assumption}[Linear realizability]\label{ass:linear}
+For every advertiser $a_i$ there exists an unknown $\theta_i\in\R^d$ such that
+$f(u_j,a_i)=\phi(\theta_i^\top z_j)$ for a known, strictly increasing link function
+$\phi$ (e.g., the identity on a restricted range, or the logistic function).
+\end{assumption}
+
+Tier~2 then becomes a \emph{contextual} combinatorial semi-bandit: the learner
+maintains a single estimate $\hat\theta_i$ (e.g., by regularized regression on all
+observed clicks) and the matrix
+$V_i=\lambda I+\sum_{\tau<t}\sum_{k:\,w^\tau_{ik}=1} z_k z_k^\top$ with $\lambda>0$,
+and replaces the UCB index of Algorithm~\ref{alg:learner} by
+\[
+\tilde f_j \;=\; \min\Big\{1,\ \phi\big(\hat\theta_i^\top z_j+\beta\,\|z_j\|_{V_i^{-1}}\big)\Big\},
+\qquad \|z\|_{V_i^{-1}}=\sqrt{z^\top V_i^{-1}z}.
+\]
+The norm is large when $z_j$ points in a direction that few previously won users
+share, so it plays the role of the bonus $\sqrt{\alpha\ln t/N_j}$, with $\beta>0$
+controlling optimism like $\alpha$. With the identity link this is the LinUCB
+approach of \citep{li2010contextual,chu2011contextual}; with a nonlinear link it is a
+heuristic. The knapsack step is unchanged. We would test \textbf{(H4)}: sharing
+information across users via features reduces regret relative to the independent-user
+learner, with the gap growing as $n$ increases relative to $d$. We would also study
+robustness when Assumption~\ref{ass:linear} holds only approximately.
+
+\subsection{A second-price variant}
+\label{sec:future-secondprice}
+
+A natural alternative to the first-price rule is a second-price rule, in which the
+winner of user $u_j$ pays the highest competing bid $c_{-i,j}$ instead of its own bid
+$b_{ij}$. Without budgets, truthful bidding is a dominant strategy in a single-item
+second-price auction \citep{vickrey1961counterspeculation}. Here a single budget $B_i$
+shared across the $n$ simultaneous auctions breaks this: an advertiser whose values
+sum to more than $B_i$ must decide where to spend. Known results on multi-unit
+auctions with budget limits show the obstacle is genuine: with private budgets, no
+deterministic auction can be simultaneously truthful, free of positive transfers, and
+Pareto optimal, whereas with public budgets the adaptive clinching auction achieves
+all three \citep{dobzinski2012multiunit,ausubel2004efficient}. We would implement a
+clinching-style mechanism under public budgets and compare its equilibrium profile,
+advertiser profit, platform revenue, and allocation efficiency against the first-price
+baseline of Section~\ref{sec:solutions}. Since the cited results concern identical
+units while our users are distinct, they motivate this approach rather than apply to
+it directly.
+
+\subsection{Endogenous budgets: reinvesting realized profit}
+\label{sec:future-endogenous}
+
+In Section~\ref{sec:formulation} the budget $B_i$ either resets every round
+(canonical structure and discounted variant) or only depletes (cumulative-budget
+variant, Remark~\ref{rem:roundvariants}). A more realistic campaign lets a successful
+advertiser reinvest its profit: $B_i(t+1)=B_i(t)+p_i(b^t)$. The budget then becomes part
+of the state carried across rounds, as in bankroll-reinvestment dynamics
+\citep{kelly1956new}, and a single advertiser's problem turns from a per-round
+knapsack into a sequential decision problem with state $(B_i(t),\hat f_i(t))$, actions
+$b_i$ with $\sum_j b_{ij}\le B_i(t)$, and transitions determined by realized wins,
+clicks, and profit. We consider this well-posed for \textbf{Tier~2 only}: with all other
+advertisers fixed at their Tier-1 bids, the learner faces a (PO)MDP that can be
+approximated with existing tools, and we would compare its long-run regret and profit
+with the fixed-budget learner. We do \emph{not} commit to a Tier~3 evaluation, since
+budgets that evolve simultaneously make every advertiser's state depend on everyone's
+profit, compounding the non-stationarity already present in Tier~3; a small-instance
+version is an optional stretch goal.
+
+\subsection{Random competing bids and win/loss-only feedback}
+\label{sec:future-mixed}
+
+In Tier~2 the opponents play a fixed pure profile, so $c_{-i,j}$ is constant and one
+observation suffices. In practice competitors' bids vary (e.g., under a mixed
+equilibrium or with adapting opponents), and a platform may reveal only whether the
+learner won. Let $c_{-i,j}$ be random; ignoring ties, a bid $b$ on user $u_j$ wins with
+probability $q_j(b)=\Pr(c_{-i,j}<b)$, which the learner estimates by $\hat q_j(b)$
+(e.g., the empirical, possibly sliding-window, distribution of revealed highest bids).
+The per-round problem becomes a \emph{multiple-choice knapsack}: choose at most one
+bid level $b$ per user to maximize $\sum_j\hat q_j(b_j)(\tilde f_j v-b_j)$ subject to
+$\sum_j b_j\le B_i$, still solvable by dynamic programming in $O(nB_i^2)$ time. We
+would compare (i)~revealed highest bids with (ii)~win/loss-only feedback, where $q_j$ is
+censored and learned only through the bids actually placed, a setting studied for a
+single bidder without budgets in \citep{han2020optimal}. Regret is measured against
+the best response to the \emph{true} distribution of $c_{-i,j}$, and we would test
+\textbf{(H5)} that regret grows with the variance of competing bids and
+\textbf{(H6)} that win/loss-only feedback yields higher regret than revealed bids.
+
+\section{Contribution}
+\label{sec:contrib}
+
+The team consists of four members, split across formalizing the baseline, building the learning algorithms, and evaluating the multi-agent setting.
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Vivek Raj --- Baseline and equilibrium.} Fix the instance parameters ($T$, $m$, $n$, and the budgets $B_i$) for the canonical round structure of Section~\ref{sec:roundstructure}; derive and implement the Tier-1 known-$f$ knapsack baseline (dynamic programming for best responses); implement equilibrium and near-equilibrium computation for small instances (best-response dynamics, fictitious play, support enumeration). \emph{Deliverable:} reference profiles $b^\ast$ and values $p_i^\ast$ consumed by all other tiers.
+  \item \textbf{Anvit Aggarwal --- Single-agent learning.} Implement the Tier-2 budget-constrained bandit learner (UCB and Thompson sampling variants, plus greedy baselines) and its regret evaluation against the Tier-1 baseline, including the budget-paced variant for the cumulative-budget round-structure robustness check (Remark~\ref{rem:roundvariants}). \emph{Deliverable:} learner module and regret curves.
+  \item \textbf{Eshaan Jaiswal --- Multi-agent learning.} Extend Tier~2 to the Tier-3 setting with all advertisers learning simultaneously; implement the simulation loop and collect convergence data as the numbers of advertisers and users vary. \emph{Deliverable:} simulator and raw convergence logs.
+  \item \textbf{Gella Naga Sai Krishna --- Evaluation and report.} Own the shared evaluation harness (regret, revenue, equilibrium-gap, and allocation-efficiency computation and plotting); run the sensitivity analyses across round structures and budget levels; lead the writing and assembly of the final report and presentation. \emph{Deliverable:} harness, sensitivity study, report.
+\end{itemize}
+
+\paragraph{Joint tasks.} All members jointly review the formalization in Section~\ref{sec:formulation} and agree on the instance parameters and the shared interfaces (instance generator, random seeds, logging format) before implementation begins; all members review code and contribute to the final report and presentation.
+
+\paragraph{Timeline.} Table~\ref{tab:timeline} gives the planned order of work; dependencies follow the tier structure.
+
+\begin{table}[h]
+  \caption{Planned phases and owners.}
+  \centering
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    Phase & Work & Lead & Depends on \\
+    \midrule
+    0 & Finalize formalization, instance parameters, interfaces & All & --- \\
+    1 & Tier-1 baseline and equilibria & Vivek Raj & Phase 0 \\
+    2 & Tier-2 learners and regret evaluation & Anvit Aggarwal & Phase 1 \\
+    3 & Tier-3 multi-agent simulation & Eshaan Jaiswal & Phase 2 \\
+    4 & Evaluation harness (developed in parallel from Phase 1) & Gella Naga Sai Krishna & Phase 0 \\
+    5 & Sensitivity analysis, report, presentation & Gella Naga Sai Krishna & Phases 1--3 \\
+    \bottomrule
+  \end{tabular}
+  \label{tab:timeline}
+\end{table}
+
+% =====================================================================
+\bibliographystyle{unsrtnat}
+
+\begin{thebibliography}{99}
+
+\bibitem{badanidiyuru2013bandits}
+Ashwinkumar Badanidiyuru, Robert Kleinberg, and Aleksandrs Slivkins.
+\newblock Bandits with knapsacks.
+\newblock In \emph{2013 IEEE 54th Annual Symposium on Foundations of Computer Science}, pages 207--216. IEEE, 2013.
+
+\bibitem{edelman2007internet}
+Benjamin Edelman, Michael Ostrovsky, and Michael Schwarz.
+\newblock Internet advertising and the generalized second-price auction: Selling billions of dollars worth of keywords.
+\newblock \emph{American Economic Review}, 97(1):242--259, 2007.
+
+\bibitem{varian2007position}
+Hal~R. Varian.
+\newblock Position auctions.
+\newblock \emph{International Journal of Industrial Organization}, 25:1163--1178, 2007.
+
+\bibitem{vickrey1961counterspeculation}
+William Vickrey.
+\newblock Counterspeculation, auctions, and competitive sealed tenders.
+\newblock \emph{The Journal of Finance}, 16(1):8--37, 1961.
+
+\bibitem{krishna2009auction}
+Vijay Krishna.
+\newblock \emph{Auction Theory}.
+\newblock Academic Press, 2nd edition, 2009.
+
+\bibitem{auer2002finite}
+Peter Auer, Nicol{\`o} Cesa-Bianchi, and Paul Fischer.
+\newblock Finite-time analysis of the multiarmed bandit problem.
+\newblock \emph{Machine Learning}, 47(2--3):235--256, 2002.
+
+\bibitem{thompson1933likelihood}
+William~R. Thompson.
+\newblock On the likelihood that one unknown probability exceeds another in view of the evidence of two samples.
+\newblock \emph{Biometrika}, 25(3--4):285--294, 1933.
+
+\bibitem{agrawal2012analysis}
+Shipra Agrawal and Navin Goyal.
+\newblock Analysis of {T}hompson sampling for the multi-armed bandit problem.
+\newblock In \emph{Proceedings of the 25th Conference on Learning Theory (COLT)}, 2012.
+
+\bibitem{slivkins2019introduction}
+Aleksandrs Slivkins.
+\newblock Introduction to multi-armed bandits.
+\newblock \emph{Foundations and Trends in Machine Learning}, 12(1--2):1--286, 2019.
+
+\bibitem{lattimore2020bandit}
+Tor Lattimore and Csaba Szepesv{\'a}ri.
+\newblock \emph{Bandit Algorithms}.
+\newblock Cambridge University Press, 2020.
+
+\bibitem{chen2013combinatorial}
+Wei Chen, Yajun Wang, and Yang Yuan.
+\newblock Combinatorial multi-armed bandit: General framework and applications.
+\newblock In \emph{Proceedings of the 30th International Conference on Machine Learning (ICML)}, pages 151--159, 2013.
+
+\bibitem{balseiro2019learning}
+Santiago~R. Balseiro and Yonatan Gur.
+\newblock Learning in repeated auctions with budgets: Regret minimization and equilibrium.
+\newblock \emph{Management Science}, 65(9):3952--3968, 2019.
+
+\bibitem{han2020optimal}
+Yanjun Han, Zhengyuan Zhou, and Tsachy Weissman.
+\newblock Optimal no-regret learning in repeated first-price auctions.
+\newblock \emph{arXiv preprint arXiv:2003.09795}, 2020.
+
+\bibitem{nash1951noncooperative}
+John Nash.
+\newblock Non-cooperative games.
+\newblock \emph{Annals of Mathematics}, 54(2):286--295, 1951.
+
+\bibitem{lemke1964equilibrium}
+Carlton~E. Lemke and Joseph~T. Howson, Jr.
+\newblock Equilibrium points of bimatrix games.
+\newblock \emph{Journal of the Society for Industrial and Applied Mathematics}, 12(2):413--423, 1964.
+
+\bibitem{kellerer2004knapsack}
+Hans Kellerer, Ulrich Pferschy, and David Pisinger.
+\newblock \emph{Knapsack Problems}.
+\newblock Springer, 2004.
+
+\bibitem{shoham2008multiagent}
+Yoav Shoham and Kevin Leyton-Brown.
+\newblock \emph{Multiagent Systems: Algorithmic, Game-Theoretic, and Logical Foundations}.
+\newblock Cambridge University Press, 2008.
+
+\bibitem{fudenberg1998theory}
+Drew Fudenberg and David~K. Levine.
+\newblock \emph{The Theory of Learning in Games}.
+\newblock MIT Press, 1998.
+
+\bibitem{dobzinski2012multiunit}
+Shahar Dobzinski, Ron Lavi, and Noam Nisan.
+\newblock Multi-unit auctions with budget limits.
+\newblock \emph{Games and Economic Behavior}, 74(2):486--503, 2012.
+
+\bibitem{ausubel2004efficient}
+Lawrence~M. Ausubel.
+\newblock An efficient ascending-bid auction for multiple objects.
+\newblock \emph{American Economic Review}, 94(5):1452--1475, 2004.
+
+\bibitem{li2010contextual}
+Lihong Li, Wei Chu, John Langford, and Robert~E. Schapire.
+\newblock A contextual-bandit approach to personalized news article recommendation.
+\newblock In \emph{Proceedings of the 19th International Conference on World Wide Web (WWW)}, pages 661--670, 2010.
+
+\bibitem{chu2011contextual}
+Wei Chu, Lihong Li, Lev Reyzin, and Robert Schapire.
+\newblock Contextual bandits with linear payoff functions.
+\newblock In \emph{Proceedings of the 14th International Conference on Artificial Intelligence and Statistics (AISTATS)}, pages 208--214, 2011.
+
+\bibitem{kelly1956new}
+John~L. Kelly, Jr.
+\newblock A new interpretation of information rate.
+\newblock \emph{Bell System Technical Journal}, 35(4):917--926, 1956.
+
+\end{thebibliography}
+
+\end{document}

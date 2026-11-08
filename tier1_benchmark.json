@@ -1,0 +1,74 @@
+{
+  "instance_name": "synth_m3_n10_k0.5_seed42",
+  "num_advertisers": 3,
+  "num_users": 10,
+  "budgets": [
+    5,
+    5,
+    5
+  ],
+  "reference_bid_profile": [
+    [
+      0,
+      1,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0
+    ],
+    [
+      1,
+      2,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      0,
+      1,
+      0,
+      2,
+      0,
+      2,
+      0,
+      0,
+      0
+    ]
+  ],
+  "advertiser_profits": [
+    1.7594999999999998,
+    5.373,
+    5.8005
+  ],
+  "platform_revenue": 12.0,
+  "expected_welfare": 24.933000000000003,
+  "allocation_efficiency": 0.6,
+  "equilibrium_gap": 0.0,
+  "is_pure_equilibrium": true,
+  "solver_method": "BestResponseDynamics",
+  "social_planner_welfare": 27.5125,
+  "social_planner_assignment": [
+    2,
+    1,
+    2,
+    1,
+    2,
+    2,
+    2,
+    1,
+    1,
+    2
+  ],
+  "welfare_loss": 2.579499999999996,
+  "efficiency_loss": 0.4
+}
