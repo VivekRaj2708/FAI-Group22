@@ -1,3 +1,6 @@
 **/*.pyc
 **/__pycache__
 **/.pytest_cache
+# Evaluation harness: large regenerable sweep artefacts
+results/**/aggregates.json
+results/run*/
