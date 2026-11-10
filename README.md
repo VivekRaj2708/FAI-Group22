@@ -24,7 +24,7 @@ python -m pytest
 python run_evaluation.py agents                                   # list registered agents
 python run_evaluation.py run --scenario tier2 --learner ucb --m 2 --n 10 --kappa 0.5 --T 2000
 python run_evaluation.py sweep --preset tier1 --T 1000 --out results/sweep_tier1
-python run_evaluation.py sweep --preset paper --out results/sweep_paper   # once Tier-2/3 agents exist
+python run_evaluation.py sweep --preset paper --out results/sweep_paper   # Tier-2 + Tier-3 learners
 python run_evaluation.py report --sweep-dir results/sweep_tier1 --report-dir Doc/report
 ```
 
@@ -36,7 +36,13 @@ Every run reports, per seed and as mean ± 95% CI over seeds: cumulative regret 
 equilibrium gap ε_t, ‖b^t − b*‖₁, allocation efficiency (expected and realized), platform revenue, welfare,
 advertiser profit, and price of learning (Tier-1 value − learned value).
 
-### Plugging in a Tier-2 / Tier-3 agent
+### Registered learners
+
+The Tier-2 agents in `src/tier2/agents.py` are registered in `src/agents/tier2_adapters.py`:
+`ucb`, `thompson`, `greedy`, `eps_greedy` and `paced` (`CumulativeBudgetPacedAgent`; it gets the real total
+budget under `cumulative`, and `B_i * T` otherwise). The same names work for `tier3` (all advertisers learn).
+
+### Plugging in a new agent
 
 Implement `src.agents.base.BaseAdvertiserAgent` and register a factory anywhere under `src/tier2/` or
 `src/tier3/` (the harness imports those packages automatically):

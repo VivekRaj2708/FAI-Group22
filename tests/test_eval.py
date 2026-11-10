@@ -211,3 +211,33 @@ def test_sweep_and_report_outputs(tmp_path):
     text = open(manifest, encoding="utf-8").read()
     assert r"\input{generated/tier1_m2}" in text
     assert os.path.exists(tmp_path / "report" / "figures" / "tier3_curves_eq_gap.png")
+
+
+TIER2_NAMES = ("ucb", "thompson", "greedy", "eps_greedy", "paced")
+
+
+@pytest.mark.parametrize("name", TIER2_NAMES)
+@pytest.mark.parametrize("structure", ["canonical", "cumulative"])
+def test_tier2_learners_run_through_harness(name, structure):
+    assert set(TIER2_NAMES) <= set(available_agents())
+    cfg = ExperimentConfig(m=2, n=5, scenario="tier2", learner=name, horizon=60,
+                           round_structure=structure, seeds=[0, 1])
+    used = [r for r in (run_seed(cfg, s, keep_trace=True) for s in cfg.seeds) if not r.summary["excluded"]]
+    assert used
+    for r in used:
+        # Per-round budgets: every learner stays feasible. Cumulative budgets: only
+        # the paced agent tracks remaining spend; the others (and fixed-b*
+        # opponents) can overbid near exhaustion and the harness zeroes those bids.
+        if structure == "canonical" or name == "paced":
+            assert r.trace.violations[cfg.focal_agent] == 0
+        assert r.summary["final_regret"] >= -1e-9  # BR is an upper bound per round
+
+
+def test_tier2_learners_are_deterministic_and_beat_random():
+    def regret(name):
+        cfg = ExperimentConfig(m=2, n=8, scenario="tier2", learner=name, horizon=600, seeds=[0, 1, 2])
+        return run_experiment(cfg)[0]["summary"]["final_regret"]["mean"]
+
+    assert regret("thompson") == regret("thompson")
+    assert regret("ucb") < regret("random")
+    assert regret("thompson") < regret("random")

@@ -47,7 +47,7 @@ AgentFactory = Callable[..., BaseAdvertiserAgent]
 _REGISTRY: Dict[str, AgentFactory] = {}
 
 # Packages that may register agents on import (owned by other phases).
-_PLUGIN_PACKAGES = ("src.tier2", "src.tier3", "src.agents.reference")
+_PLUGIN_PACKAGES = ("src.tier2", "src.agents.tier2_adapters", "src.tier3", "src.agents.reference")
 _plugins_loaded = False
 
 
