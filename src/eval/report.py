@@ -9,7 +9,7 @@ Everything is regenerated from ``aggregates.json``, so re-running the sweep
 (e.g. after Tier-2/3 learners are registered) refreshes the report.
 """
 import os
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 from src.eval.plotting import METRIC_LABELS, pick, plot_curves, plot_heatmaps
 from src.eval.sweep import load_aggregates
@@ -70,13 +70,25 @@ def _sort(rows: List[Dict]) -> List[Dict]:
     return sorted(rows, key=lambda a: (a["config"]["m"], a["config"]["n"], a["config"]["kappa"]))
 
 
-def build_report(sweep_dir: str, report_dir: str, fig_ext: str = "pdf") -> str:
-    aggs = [a for a in load_aggregates(sweep_dir) if a["n_used"] > 0]
+def build_report(sweep_dir: Union[str, Sequence[str]], report_dir: str, fig_ext: str = "pdf") -> str:
+    """Build tables/figures from one or more sweep directories.
+
+    With several directories, configurations are merged by label; the first
+    directory listing a label wins (so put the most authoritative sweep first).
+    """
+    dirs = [sweep_dir] if isinstance(sweep_dir, str) else list(sweep_dir)
+    seen, aggs = set(), []
+    for d in dirs:
+        for a in load_aggregates(d):
+            if a["n_used"] > 0 and a["label"] not in seen:
+                seen.add(a["label"])
+                aggs.append(a)
     gen_dir = os.path.join(report_dir, "generated")
     fig_dir = os.path.join(report_dir, "figures")
     os.makedirs(gen_dir, exist_ok=True)
     os.makedirs(fig_dir, exist_ok=True)
-    parts: List[str] = [f"% Auto-generated from {_tex(os.path.basename(os.path.normpath(sweep_dir)))} "
+    names = ", ".join(_tex(os.path.basename(os.path.normpath(d))) for d in dirs)
+    parts: List[str] = [f"% Auto-generated from {names} "
                         "by run_evaluation.py report. Do not edit by hand.", ""]
     T = aggs[0]["config"]["horizon"] if aggs else 0
     seeds = aggs[0]["n_seeds"] if aggs else 0

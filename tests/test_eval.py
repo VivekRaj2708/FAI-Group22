@@ -241,3 +241,16 @@ def test_tier2_learners_are_deterministic_and_beat_random():
     assert regret("thompson") == regret("thompson")
     assert regret("ucb") < regret("random")
     assert regret("thompson") < regret("random")
+
+
+def test_report_merges_multiple_sweeps(tmp_path):
+    base = dict(ms=[2], ns=[4], kappas=[0.5], structures=["canonical"], horizon=30, num_seeds=2)
+    a, b = tmp_path / "a", tmp_path / "b"
+    run_sweep(SweepSpec(runs=[("tier1", "-"), ("tier3", "oracle_br")], **base), str(a), workers=1, verbose=False)
+    run_sweep(SweepSpec(runs=[("tier1", "-"), ("tier2", "ucb")], **base), str(b), workers=1, verbose=False)
+
+    from src.eval.report import build_report
+    text = open(build_report([str(a), str(b)], str(tmp_path / "report"), fig_ext="png"), encoding="utf-8").read()
+    assert r"\input{generated/tier1_m2}" in text
+    assert r"\input{generated/tier3_oracle_br_canonical}" in text
+    assert r"\input{generated/tier2_ucb_canonical}" in text

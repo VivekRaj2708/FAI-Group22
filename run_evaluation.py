@@ -124,7 +124,7 @@ def main(argv=None):
     s.set_defaults(fn=cmd_sweep)
 
     rp = sub.add_parser("report", help="build LaTeX tables + figures from a sweep")
-    rp.add_argument("--sweep-dir", required=True)
+    rp.add_argument("--sweep-dir", required=True, nargs="+", help="one or more sweep dirs (first wins on duplicate configs)")
     rp.add_argument("--report-dir", default="Doc/report")
     rp.add_argument("--fig-ext", default="pdf", choices=["pdf", "png"])
     rp.set_defaults(fn=cmd_report)
