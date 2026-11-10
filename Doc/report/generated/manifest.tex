@@ -1,4 +1,4 @@
-% Auto-generated from sweep\_tier1 by run_evaluation.py report. Do not edit by hand.
+% Auto-generated from sweep\_tier1, sweep\_learners by run_evaluation.py report. Do not edit by hand.
 
 \subsection{Tier 1 across the experimental grid}
 Each cell averages 30 random instances (Beta click probabilities, $v=5$); $\pm$ is the 95\% Student-$t$ half-width. Welfare ratio is $\mathrm{Wel}(b^*)$ over the first-best welfare of the omniscient planner.
@@ -34,6 +34,137 @@ Each cell averages 30 random instances (Beta click probabilities, $v=5$); $\pm$ 
 \input{generated/tier1_m3}
 \input{generated/tier1_m5}
 \clearpage
+\subsection{Tier 2: single learner vs.\ fixed Tier-1 opponents}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/tier2_curves_cum_regret.pdf}
+\caption{Cumulative regret (focal advertiser) vs.\ round, mean and 95\% CI band over seeds ($m=2$, $n=10$, $\kappa=0.5$, canonical).}
+\label{fig:tier2-cum_regret}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/tier2_curves_total_profit.pdf}
+\caption{Total advertiser profit $\sum_i p_i(b^t)$ vs.\ round, mean and 95\% CI band over seeds ($m=2$, $n=10$, $\kappa=0.5$, canonical).}
+\label{fig:tier2-total_profit}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/tier2_eps_greedy_structures_cum_regret.pdf}
+\caption{\texttt{eps\_greedy}: Cumulative regret (focal advertiser) under different round structures (cumulative is measured against the fluid LP benchmark; discounted regret uses weights $\gamma^{t-1}$).}
+\label{fig:tier2-eps_greedy-structures}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier2_eps_greedy_heat_final_regret.pdf}
+\caption{\texttt{eps\_greedy} (tier2, canonical): Final regret $\mathrm{Reg}_T$ across $(m,n,\kappa)$.}
+\label{fig:tier2-eps_greedy-final_regret}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier2_eps_greedy_heat_pol_total_profit.pdf}
+\caption{\texttt{eps\_greedy} (tier2, canonical): Price of learning (total profit) across $(m,n,\kappa)$.}
+\label{fig:tier2-eps_greedy-pol_total_profit}
+\end{figure}
+
+\input{generated/tier2_eps_greedy_canonical}
+\input{generated/tier2_eps_greedy_cumulative}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/tier2_greedy_structures_cum_regret.pdf}
+\caption{\texttt{greedy}: Cumulative regret (focal advertiser) under different round structures (cumulative is measured against the fluid LP benchmark; discounted regret uses weights $\gamma^{t-1}$).}
+\label{fig:tier2-greedy-structures}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier2_greedy_heat_final_regret.pdf}
+\caption{\texttt{greedy} (tier2, canonical): Final regret $\mathrm{Reg}_T$ across $(m,n,\kappa)$.}
+\label{fig:tier2-greedy-final_regret}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier2_greedy_heat_pol_total_profit.pdf}
+\caption{\texttt{greedy} (tier2, canonical): Price of learning (total profit) across $(m,n,\kappa)$.}
+\label{fig:tier2-greedy-pol_total_profit}
+\end{figure}
+
+\input{generated/tier2_greedy_canonical}
+\input{generated/tier2_greedy_cumulative}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/tier2_paced_structures_cum_regret.pdf}
+\caption{\texttt{paced}: Cumulative regret (focal advertiser) under different round structures (cumulative is measured against the fluid LP benchmark; discounted regret uses weights $\gamma^{t-1}$).}
+\label{fig:tier2-paced-structures}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier2_paced_heat_final_regret.pdf}
+\caption{\texttt{paced} (tier2, canonical): Final regret $\mathrm{Reg}_T$ across $(m,n,\kappa)$.}
+\label{fig:tier2-paced-final_regret}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier2_paced_heat_pol_total_profit.pdf}
+\caption{\texttt{paced} (tier2, canonical): Price of learning (total profit) across $(m,n,\kappa)$.}
+\label{fig:tier2-paced-pol_total_profit}
+\end{figure}
+
+\input{generated/tier2_paced_canonical}
+\input{generated/tier2_paced_cumulative}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/tier2_thompson_structures_cum_regret.pdf}
+\caption{\texttt{thompson}: Cumulative regret (focal advertiser) under different round structures (cumulative is measured against the fluid LP benchmark; discounted regret uses weights $\gamma^{t-1}$).}
+\label{fig:tier2-thompson-structures}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier2_thompson_heat_final_regret.pdf}
+\caption{\texttt{thompson} (tier2, canonical): Final regret $\mathrm{Reg}_T$ across $(m,n,\kappa)$.}
+\label{fig:tier2-thompson-final_regret}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier2_thompson_heat_pol_total_profit.pdf}
+\caption{\texttt{thompson} (tier2, canonical): Price of learning (total profit) across $(m,n,\kappa)$.}
+\label{fig:tier2-thompson-pol_total_profit}
+\end{figure}
+
+\input{generated/tier2_thompson_canonical}
+\input{generated/tier2_thompson_cumulative}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/tier2_ucb_structures_cum_regret.pdf}
+\caption{\texttt{ucb}: Cumulative regret (focal advertiser) under different round structures (cumulative is measured against the fluid LP benchmark; discounted regret uses weights $\gamma^{t-1}$).}
+\label{fig:tier2-ucb-structures}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier2_ucb_heat_final_regret.pdf}
+\caption{\texttt{ucb} (tier2, canonical): Final regret $\mathrm{Reg}_T$ across $(m,n,\kappa)$.}
+\label{fig:tier2-ucb-final_regret}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier2_ucb_heat_pol_total_profit.pdf}
+\caption{\texttt{ucb} (tier2, canonical): Price of learning (total profit) across $(m,n,\kappa)$.}
+\label{fig:tier2-ucb-pol_total_profit}
+\end{figure}
+
+\input{generated/tier2_ucb_canonical}
+\input{generated/tier2_ucb_cumulative}
+\clearpage
 \subsection{Tier 3: all advertisers adapt concurrently}
 \begin{figure}[htbp]
 \centering
@@ -63,6 +194,80 @@ Each cell averages 30 random instances (Beta click probabilities, $v=5$); $\pm$ 
 \label{fig:tier3-total_profit}
 \end{figure}
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/tier3_eps_greedy_structures_eq_gap.pdf}
+\caption{\texttt{eps\_greedy}: Equilibrium gap $\varepsilon_t$ under different round structures (cumulative is measured against the fluid LP benchmark; the discounted variant changes only cumulative sums, so its per-round curve equals canonical).}
+\label{fig:tier3-eps_greedy-structures}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_eps_greedy_heat_eq_gap_last.pdf}
+\caption{\texttt{eps\_greedy} (tier3, canonical): Final equilibrium gap across $(m,n,\kappa)$.}
+\label{fig:tier3-eps_greedy-eq_gap_last}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_eps_greedy_heat_eq_distance_last.pdf}
+\caption{\texttt{eps\_greedy} (tier3, canonical): Final $\|b^t-b^*\|_1$ across $(m,n,\kappa)$.}
+\label{fig:tier3-eps_greedy-eq_distance_last}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_eps_greedy_heat_pol_total_profit.pdf}
+\caption{\texttt{eps\_greedy} (tier3, canonical): Price of learning (total profit) across $(m,n,\kappa)$.}
+\label{fig:tier3-eps_greedy-pol_total_profit}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_eps_greedy_heat_efficiency_last.pdf}
+\caption{\texttt{eps\_greedy} (tier3, canonical): Final efficiency across $(m,n,\kappa)$.}
+\label{fig:tier3-eps_greedy-efficiency_last}
+\end{figure}
+
+\input{generated/tier3_eps_greedy_canonical}
+\input{generated/tier3_eps_greedy_cumulative}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/tier3_greedy_structures_eq_gap.pdf}
+\caption{\texttt{greedy}: Equilibrium gap $\varepsilon_t$ under different round structures (cumulative is measured against the fluid LP benchmark; the discounted variant changes only cumulative sums, so its per-round curve equals canonical).}
+\label{fig:tier3-greedy-structures}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_greedy_heat_eq_gap_last.pdf}
+\caption{\texttt{greedy} (tier3, canonical): Final equilibrium gap across $(m,n,\kappa)$.}
+\label{fig:tier3-greedy-eq_gap_last}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_greedy_heat_eq_distance_last.pdf}
+\caption{\texttt{greedy} (tier3, canonical): Final $\|b^t-b^*\|_1$ across $(m,n,\kappa)$.}
+\label{fig:tier3-greedy-eq_distance_last}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_greedy_heat_pol_total_profit.pdf}
+\caption{\texttt{greedy} (tier3, canonical): Price of learning (total profit) across $(m,n,\kappa)$.}
+\label{fig:tier3-greedy-pol_total_profit}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_greedy_heat_efficiency_last.pdf}
+\caption{\texttt{greedy} (tier3, canonical): Final efficiency across $(m,n,\kappa)$.}
+\label{fig:tier3-greedy-efficiency_last}
+\end{figure}
+
+\input{generated/tier3_greedy_canonical}
+\input{generated/tier3_greedy_cumulative}
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.8\linewidth]{figures/tier3_oracle_br_structures_eq_gap.pdf}
@@ -101,4 +306,115 @@ Each cell averages 30 random instances (Beta click probabilities, $v=5$); $\pm$ 
 \input{generated/tier3_oracle_br_canonical}
 \input{generated/tier3_oracle_br_cumulative}
 \input{generated/tier3_oracle_br_discounted}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/tier3_paced_structures_eq_gap.pdf}
+\caption{\texttt{paced}: Equilibrium gap $\varepsilon_t$ under different round structures (cumulative is measured against the fluid LP benchmark; the discounted variant changes only cumulative sums, so its per-round curve equals canonical).}
+\label{fig:tier3-paced-structures}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_paced_heat_eq_gap_last.pdf}
+\caption{\texttt{paced} (tier3, canonical): Final equilibrium gap across $(m,n,\kappa)$.}
+\label{fig:tier3-paced-eq_gap_last}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_paced_heat_eq_distance_last.pdf}
+\caption{\texttt{paced} (tier3, canonical): Final $\|b^t-b^*\|_1$ across $(m,n,\kappa)$.}
+\label{fig:tier3-paced-eq_distance_last}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_paced_heat_pol_total_profit.pdf}
+\caption{\texttt{paced} (tier3, canonical): Price of learning (total profit) across $(m,n,\kappa)$.}
+\label{fig:tier3-paced-pol_total_profit}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_paced_heat_efficiency_last.pdf}
+\caption{\texttt{paced} (tier3, canonical): Final efficiency across $(m,n,\kappa)$.}
+\label{fig:tier3-paced-efficiency_last}
+\end{figure}
+
+\input{generated/tier3_paced_canonical}
+\input{generated/tier3_paced_cumulative}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/tier3_thompson_structures_eq_gap.pdf}
+\caption{\texttt{thompson}: Equilibrium gap $\varepsilon_t$ under different round structures (cumulative is measured against the fluid LP benchmark; the discounted variant changes only cumulative sums, so its per-round curve equals canonical).}
+\label{fig:tier3-thompson-structures}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_thompson_heat_eq_gap_last.pdf}
+\caption{\texttt{thompson} (tier3, canonical): Final equilibrium gap across $(m,n,\kappa)$.}
+\label{fig:tier3-thompson-eq_gap_last}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_thompson_heat_eq_distance_last.pdf}
+\caption{\texttt{thompson} (tier3, canonical): Final $\|b^t-b^*\|_1$ across $(m,n,\kappa)$.}
+\label{fig:tier3-thompson-eq_distance_last}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_thompson_heat_pol_total_profit.pdf}
+\caption{\texttt{thompson} (tier3, canonical): Price of learning (total profit) across $(m,n,\kappa)$.}
+\label{fig:tier3-thompson-pol_total_profit}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_thompson_heat_efficiency_last.pdf}
+\caption{\texttt{thompson} (tier3, canonical): Final efficiency across $(m,n,\kappa)$.}
+\label{fig:tier3-thompson-efficiency_last}
+\end{figure}
+
+\input{generated/tier3_thompson_canonical}
+\input{generated/tier3_thompson_cumulative}
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\linewidth]{figures/tier3_ucb_structures_eq_gap.pdf}
+\caption{\texttt{ucb}: Equilibrium gap $\varepsilon_t$ under different round structures (cumulative is measured against the fluid LP benchmark; the discounted variant changes only cumulative sums, so its per-round curve equals canonical).}
+\label{fig:tier3-ucb-structures}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_ucb_heat_eq_gap_last.pdf}
+\caption{\texttt{ucb} (tier3, canonical): Final equilibrium gap across $(m,n,\kappa)$.}
+\label{fig:tier3-ucb-eq_gap_last}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_ucb_heat_eq_distance_last.pdf}
+\caption{\texttt{ucb} (tier3, canonical): Final $\|b^t-b^*\|_1$ across $(m,n,\kappa)$.}
+\label{fig:tier3-ucb-eq_distance_last}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_ucb_heat_pol_total_profit.pdf}
+\caption{\texttt{ucb} (tier3, canonical): Price of learning (total profit) across $(m,n,\kappa)$.}
+\label{fig:tier3-ucb-pol_total_profit}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/tier3_ucb_heat_efficiency_last.pdf}
+\caption{\texttt{ucb} (tier3, canonical): Final efficiency across $(m,n,\kappa)$.}
+\label{fig:tier3-ucb-efficiency_last}
+\end{figure}
+
+\input{generated/tier3_ucb_canonical}
+\input{generated/tier3_ucb_cumulative}
 \clearpage

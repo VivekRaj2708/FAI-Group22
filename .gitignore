@@ -4,3 +4,4 @@
 # Evaluation harness: large regenerable sweep artefacts
 results/**/aggregates.json
 results/run*/
+results/sweep_learners/per_seed.csv

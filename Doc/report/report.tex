@@ -44,7 +44,9 @@ against fixed equilibrium opponents (Tier~2), and simulate all advertisers learn
 All tiers are evaluated by a shared harness that reports regret, equilibrium gap, distance to equilibrium,
 allocation efficiency, profit and revenue with $95\%$ confidence intervals over $30$ seeds, across
 $(m,n,\kappa)$ and three round structures.
-\todo{final headline numbers for Tiers 2--3 once the learner sweep is in.}
+Thompson sampling is the strongest learner: it has the lowest Tier-2 regret in every canonical cell
+(regret slope $\approx0.33$ at $T=1000$, against $0.73$ for UCB with $\alpha=2$), and when all advertisers
+use it the final equilibrium gap ($1.46$) is slightly below that of full-information best response.
 \end{abstract}
 
 % =====================================================================
@@ -151,17 +153,49 @@ round to $B_i=1$ and give identical instances.
   at tight budgets. This motivates the budget-paced Tier-2 agent.
 \end{itemize}
 
-\paragraph{Learning results.} \todo{H1 (sublinear regret; UCB vs.\ Thompson vs.\ greedy) from the
-Tier-2 sweep; H2 (gap vs.\ $m$) and price of learning from the Tier-3 sweep, compared against the
-\texttt{oracle\_br} control above; H3 (tight budgets slow learning).}
+\paragraph{Learning findings (Tiers 2 and 3; $T=1000$, $30$ seeds, $v=5$).} Averages are over the
+$(m,n,\kappa)$ grid; per-cell values with CIs are in the generated tables.
+\begin{itemize}[leftmargin=*]
+  \item \textbf{H1: Thompson sampling learns fastest; UCB with $\alpha=2$ over-explores.} Against fixed
+  $b^*_{-1}$ opponents (canonical), Thompson has the lowest final regret in all $47$ cells with a pure
+  equilibrium (the remaining cell, $m=5$, $n=50$, $\kappa=0.25$, has no pure equilibrium in any of the $30$ seeds). Mean regret per round is $0.49$ (Thompson), $1.22$
+  ($\epsilon$-greedy, $\epsilon=0.1$), $1.77$ (UCB) and $2.95$ (greedy), and the log-log regret slopes are
+  $0.33$, $0.66$, $0.73$ and $0.79$ (Figure~\ref{fig:tier2-cum_regret}). The greedy slope approaches $1$
+  for $n\ge20$ (linear regret, as expected without exploration), while Thompson's stays at $0.28$--$0.36$
+  for every $n$. UCB's index $\sqrt{2\ln t/N_j}$ is large relative to $f_{ij}\le1$ at this horizon,
+  so it keeps paying $c_{-i,j}+1$ on low-value users. A smaller $\alpha$ or a longer $T$ should narrow the gap.
+  \item \textbf{H3 is not supported in its proposed form.} Tighter budgets do not slow learning:
+  Thompson's regret per round is flat in $\kappa$ ($0.45$--$0.53$), and UCB's \emph{grows} with
+  $\kappa$ ($0.81$ at $\kappa=0.25$ to $3.38$ at $\kappa=1$), because a larger budget lets an optimistic
+  learner buy more exploratory impressions per round.
+  \item \textbf{Cumulative budgets: pacing helps, but no learner is good yet.} With a total budget of
+  $\rho TB_i$, the paced agent (\texttt{CumulativeBudgetPacedAgent}) has a regret slope of $2.7$ against the
+  fluid benchmark, against $5.8$--$24.6$ for the myopic learners, and the lowest mean regret
+  ($1378$ versus $2912$ for UCB). It wins $13$ of $47$ cells, and Thompson wins $26$. All slopes above $1$
+  mean regret accelerates once budgets run out. In the Tier-2 cumulative runs the fixed $b^*$ opponents
+  also exhaust their budgets and drop out, so the ``fixed opponent'' assumption does not hold under this
+  structure.
+  \item \textbf{H2: concurrent Thompson learners get closer to $b^*$ than best response does.} When all
+  advertisers learn (canonical), the final gap is $0.67$, $1.25$ and $2.48$ for $m=2,3,5$ with Thompson,
+  against $2.3$--$4.9$ for UCB and $\epsilon$-greedy and $0.76$--$2.37$ for the full-information
+  \texttt{oracle\_br} control (Figure~\ref{fig:tier3-eq_gap}). The gap still grows with $m$. Posterior
+  sampling appears to damp the best-response cycling seen with known $f$.
+  \item \textbf{Price of learning.} With Thompson in Tier~3 the price of learning is small: efficiency
+  falls by $0.02$ and revenue by $2.6$ per round, and advertisers' total profit \emph{rises} by $0.3$
+  (prices are competed down, as with \texttt{oracle\_br}). UCB loses $0.23$ efficiency and $7.7$ in
+  total profit, and greedy loses $0.29$ efficiency.
+  \item \textbf{Note on \texttt{paced} under per-round budgets.} With per-round budgets it is given a
+  slack total of $B_iT$, so its multiplier stays at $0$ and its results match UCB exactly. This is
+  expected, not a bug.
+\end{itemize}
 
 % =====================================================================
 \section{Reproducibility}
 \begin{verbatim}
 python run_evaluation.py agents                      # registered agents
 python run_evaluation.py sweep --preset tier1 --T 1000 --out results/sweep_tier1
-python run_evaluation.py sweep --preset paper --out results/sweep_paper
-python run_evaluation.py report --sweep-dir results/sweep_tier1 --report-dir Doc/report
+python run_evaluation.py sweep --preset paper --T 1000 --structures canonical cumulative     --learners ucb thompson greedy eps_greedy paced --scenarios tier2 tier3     --out results/sweep_learners                    # ~20 min on 14 cores
+python run_evaluation.py report --sweep-dir results/sweep_tier1 results/sweep_learners     --report-dir Doc/report
 python -m pytest
 \end{verbatim}
 
