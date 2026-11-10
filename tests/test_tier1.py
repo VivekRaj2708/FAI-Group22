@@ -1,6 +1,14 @@
 import os
+import sys
 import tempfile
-import pytest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+try:
+    import pytest
+except ImportError:
+    pytest = None
 
 from src.env.instance import AuctionInstance, generate_synthetic_instance
 from src.env.auction import BatchedFirstPriceAuction
@@ -167,3 +175,10 @@ def test_tier1_solver_and_json_serialization():
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+if __name__ == "__main__":
+    for name, func in list(globals().items()):
+        if name.startswith("test_") and callable(func):
+            func()
+    print("All Tier 1 tests passed successfully!")

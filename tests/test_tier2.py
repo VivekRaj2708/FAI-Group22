@@ -1,7 +1,19 @@
 import math
 import os
+import sys
 import tempfile
-import pytest
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+try:
+    import pytest
+except ImportError:
+    class _PytestStub:
+        @staticmethod
+        def fixture(func):
+            return func
+    pytest = _PytestStub()
 import numpy as np
 
 from src.env.instance import AuctionInstance, generate_synthetic_instance
@@ -247,3 +259,18 @@ def test_tier2_experiment_serialization(standard_instance):
     finally:
         if os.path.exists(tmp_path):
             os.remove(tmp_path)
+
+
+if __name__ == "__main__":
+    inst = standard_instance()
+    test_ucb_agent_probing_and_budget_constraint(inst)
+    test_ucb_index_math()
+    test_thompson_sampling_agent(inst)
+    test_greedy_and_eps_greedy_agents(inst)
+    test_cumulative_budget_paced_agent()
+    test_tier2_simulation_single_trial(inst)
+    test_tier2_multi_seed_experiment(inst)
+    test_sublinear_regret_growth()
+    test_discounted_round_structure(inst)
+    test_tier2_experiment_serialization(inst)
+    print("All Tier 2 tests passed successfully!")

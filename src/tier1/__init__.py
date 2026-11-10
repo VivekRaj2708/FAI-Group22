@@ -19,6 +19,8 @@ from src.tier1.equilibrium import (
 from src.tier1.baseline import (
     Tier1Benchmark,
     Tier1Solver,
+    Tier1EquilibriumAgent,
+    Tier1KnapsackAgent,
 )
 
 __all__ = [
@@ -36,4 +38,6 @@ __all__ = [
     "solve_support_enumeration_small",
     "Tier1Benchmark",
     "Tier1Solver",
+    "Tier1EquilibriumAgent",
+    "Tier1KnapsackAgent",
 ]

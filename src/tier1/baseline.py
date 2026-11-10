@@ -1,9 +1,12 @@
 from dataclasses import dataclass, asdict
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 import json
+import numpy as np
 
+from src.agents.base import BaseAdvertiserAgent
 from src.env.instance import AuctionInstance
 from src.env.auction import BatchedFirstPriceAuction
+from src.tier1.knapsack import compute_best_response_knapsack
 from src.tier1.social_planner import compute_social_planner_benchmark, SocialPlannerOutcome
 from src.tier1.equilibrium import (
     EquilibriumResult,
@@ -130,3 +133,130 @@ class Tier1Solver:
             welfare_loss=welfare_loss,
             efficiency_loss=eff_loss,
         )
+
+
+class Tier1EquilibriumAgent(BaseAdvertiserAgent):
+    """
+    Tier-1 Baseline Agent that persistently plays a fixed equilibrium strategy b_i*.
+    """
+
+    def __init__(
+        self,
+        agent_id: int,
+        budget: int,
+        num_users: int,
+        equilibrium_bid: List[int],
+        click_value: float = 1.0,
+        true_f: Optional[List[float]] = None,
+        name: Optional[str] = None,
+    ):
+        super().__init__(
+            agent_id=agent_id,
+            budget=budget,
+            num_users=num_users,
+            click_value=click_value,
+            name=name or f"Tier1Equilibrium_Agent_{agent_id}",
+        )
+        self.equilibrium_bid = [int(b) for b in equilibrium_bid]
+        self.true_f = list(true_f) if true_f is not None else [0.0] * num_users
+        self.pulls = [0] * num_users
+        self.clicks = [0] * num_users
+        self.last_competing_bids: Optional[List[int]] = None
+
+    def reset(self) -> None:
+        self.pulls = [0] * self.num_users
+        self.clicks = [0] * self.num_users
+        self.last_competing_bids = None
+
+    def get_bid(
+        self,
+        t: int,
+        last_competing_bids: Optional[Union[List[int], np.ndarray]] = None,
+    ) -> List[int]:
+        if last_competing_bids is not None:
+            self.last_competing_bids = [int(b) for b in last_competing_bids]
+        return list(self.equilibrium_bid)
+
+    def observe(
+        self,
+        won: Union[List[int], np.ndarray],
+        clicks: Union[List[int], np.ndarray],
+        payments: Union[List[int], np.ndarray],
+        competing_bids: Union[List[int], np.ndarray],
+    ) -> None:
+        self.last_competing_bids = [int(b) for b in competing_bids]
+        for j in range(self.num_users):
+            if won[j]:
+                self.pulls[j] += 1
+                self.clicks[j] += int(clicks[j])
+
+    def get_estimated_click_probabilities(self) -> List[float]:
+        return list(self.true_f)
+
+
+class Tier1KnapsackAgent(BaseAdvertiserAgent):
+    """
+    Tier-1 Best-Response Agent with perfect knowledge of true click probabilities f_ij.
+    Dynamically computes best response via 0-1 knapsack DP against observed competing bids.
+    """
+
+    def __init__(
+        self,
+        agent_id: int,
+        budget: int,
+        num_users: int,
+        true_f: List[float],
+        click_value: float = 1.0,
+        name: Optional[str] = None,
+    ):
+        super().__init__(
+            agent_id=agent_id,
+            budget=budget,
+            num_users=num_users,
+            click_value=click_value,
+            name=name or f"Tier1Knapsack_Agent_{agent_id}",
+        )
+        self.true_f = list(true_f)
+        self.pulls = [0] * num_users
+        self.clicks = [0] * num_users
+        self.last_competing_bids: Optional[List[int]] = None
+
+    def reset(self) -> None:
+        self.pulls = [0] * self.num_users
+        self.clicks = [0] * self.num_users
+        self.last_competing_bids = None
+
+    def get_bid(
+        self,
+        t: int,
+        last_competing_bids: Optional[Union[List[int], np.ndarray]] = None,
+    ) -> List[int]:
+        if last_competing_bids is not None:
+            self.last_competing_bids = [int(b) for b in last_competing_bids]
+
+        if t <= 1 or self.last_competing_bids is None:
+            return [0] * self.num_users
+
+        knap_res = compute_best_response_knapsack(
+            f_i=self.true_f,
+            competing_bids=self.last_competing_bids,
+            budget=self.budget,
+            click_value=self.click_value,
+        )
+        return knap_res.bids
+
+    def observe(
+        self,
+        won: Union[List[int], np.ndarray],
+        clicks: Union[List[int], np.ndarray],
+        payments: Union[List[int], np.ndarray],
+        competing_bids: Union[List[int], np.ndarray],
+    ) -> None:
+        self.last_competing_bids = [int(b) for b in competing_bids]
+        for j in range(self.num_users):
+            if won[j]:
+                self.pulls[j] += 1
+                self.clicks[j] += int(clicks[j])
+
+    def get_estimated_click_probabilities(self) -> List[float]:
+        return list(self.true_f)
