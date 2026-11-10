@@ -289,3 +289,85 @@ Phase 0: Shared Interfaces & Formalization (All)
    └── Phase 4 & 5: Gella Naga Sai Krishna
        └── Evaluation Harness, Sensitivity Analysis Across (m, n, kappa) & Final Report
 ```
+
+---
+
+## 8. Deliverable Run Instructions & Reproducibility Guide
+
+All deliverables are fully executable from the command line. Python 3.10+ with standard numerical packages (`numpy`, `scipy`, `matplotlib`) is required.
+
+### 8.1 Test Suites & Quality Assurance
+Run the consolidated test suite covering all tiers (6 Tier-1 tests, 10 Tier-2 tests, 10 Tier-3 tests):
+```bash
+python run_tests.py
+```
+Or run individual tier test modules directly:
+```bash
+python tests/test_tier1.py
+python tests/test_tier2.py
+python tests/test_tier3.py
+```
+
+### 8.2 Deliverable 1 (Phase 1): Tier-1 Full-Information Solver & Equilibrium
+Computes exact 0-1 knapsack best responses via DP, pure/approximate Nash equilibria $b^*$, advertiser profits $p_i^*$, platform revenue, and the social planner benchmark:
+```bash
+# Standard 2-advertiser, 4-user instance with tightness kappa=0.5
+python run_tier1.py --m 2 --n 4 --kappa 0.5 --v 5.0 --output tier1_benchmark.json
+
+# 3 advertisers, 5 users with tight budget kappa=0.25
+python run_tier1.py --m 3 --n 5 --kappa 0.25 --v 5.0 --output tier1_benchmark_3x5.json
+```
+**Artifact Produced:** `tier1_benchmark.json` (reference profile $b^*$, profits $p^*$, welfare, and efficiency consumed by downstream tiers).
+
+### 8.3 Deliverable 2 (Phase 2): Tier-2 Single-Agent Bandit Learners & Regret Curves
+Runs single-agent combinatorial semi-bandit learners (UCB, Thompson Sampling, Greedy, $\epsilon$-Greedy, and Cumulative Budget Pacing) facing stationary Tier-1 equilibrium opponents:
+```bash
+# Run all learners across 5 seeds over 200 rounds
+python run_tier2.py --rounds 200 --trials 5 --plot tier2_regret_curves.png --output tier2_benchmark.json
+
+# Run specific learner (e.g. Thompson Sampling only)
+python run_tier2.py --learners thompson --rounds 500 --trials 10
+
+# Robustness check: Discounted variant (gamma = 0.95)
+python run_tier2.py --round-structure discounted --discount-factor 0.95 --rounds 200
+
+# Robustness check: Cumulative budget pacing
+python run_tier2.py --learners paced --round-structure cumulative --rounds 200
+```
+**Artifacts Produced:** `tier2_benchmark.json` (per-round regrets, profits, efficiencies with 95% CIs) and `tier2_regret_curves.png` (publication-ready comparative regret plot).
+
+### 8.4 Deliverable 3 (Phase 3): Tier-3 Multi-Agent Simulator & Convergence Data
+Simulates $m$ advertisers bidding and updating beliefs simultaneously in a non-stationary market. Computes the equilibrium gap $\varepsilon_t$, distance to equilibrium $\|b^t - b^*\|_1$, per-agent regret, stability/cycling detection, and Price of Learning:
+
+```bash
+# 1. Homogeneous UCB Market (All advertisers use UCB, alpha=2.0)
+python run_tier3.py --m 2 --n 4 --population all_ucb --rounds 300 --trials 5 --plot tier3_convergence_plots.png --output tier3_benchmark.json
+
+# 2. Homogeneous Thompson Sampling Market (All advertisers use TS)
+python run_tier3.py --m 2 --n 4 --population all_ts --rounds 300 --trials 5 --output tier3_benchmark_ts.json
+
+# 3. Mixed UCB vs. Thompson Sampling Market
+python run_tier3.py --m 2 --n 4 --population mixed_ucb_ts --rounds 300 --trials 5
+
+# 4. Heterogeneous Market (m=4: UCB, Thompson Sampling, Greedy, EpsGreedy)
+python run_tier3.py --m 4 --n 4 --population mixed_all --rounds 300 --trials 5
+
+# 5. Online Learner vs. Fixed Tier-1 Equilibrium Opponents
+python run_tier3.py --m 3 --n 5 --population learner_vs_equilibrium --rounds 300 --trials 5
+
+# 6. Cumulative Budget Structure (Fluid LP / Pacing Dynamics)
+python run_tier3.py --m 2 --n 4 --population all_ucb --round-structure cumulative --rounds 300 --trials 5
+```
+**Artifacts Produced:** `tier3_benchmark.json` (full trajectory metrics, stability analysis, convergence rates, Price of Learning) and `tier3_convergence_plots.png` (5-panel figure displaying gap $\varepsilon_t$, distance $\|b^t - b^*\|_1$, regrets, efficiencies, and profit distributions).
+
+### 8.5 Deliverable 4 & 5 (Phase 4 & 5): Sensitivity Study & Parameter Matrix
+To execute the experimental factor matrix from Table 1 across $m \in \{2, 3, 5\}$, $n \in \{5, 10, 20\}$, and $\kappa \in \{0.1, 0.25, 0.5, 1.0\}$:
+```bash
+# Budget tightness variation (scarce vs abundant)
+python run_tier3.py --m 2 --n 5 --kappa 0.1 --rounds 200 --trials 5 --output tier3_kappa_0.1.json
+python run_tier3.py --m 2 --n 5 --kappa 1.0 --rounds 200 --trials 5 --output tier3_kappa_1.0.json
+
+# Market thickness variation (scaling number of competitors)
+python run_tier3.py --m 3 --n 5 --kappa 0.5 --rounds 200 --trials 5 --output tier3_m3_n5.json
+python run_tier3.py --m 5 --n 10 --kappa 0.5 --rounds 200 --trials 5 --output tier3_m5_n10.json
+```
