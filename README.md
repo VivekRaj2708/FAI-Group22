@@ -80,6 +80,8 @@ The experimental study is organized across three tiers:
 ├── run_evaluation.py                 # Evaluation harness CLI (Phase 4/5)
 ├── run_tests.py                      # Consolidated test runner
 ├── Agents.md                         # Architecture and specifications
+├── Doc/                              # main.tex (proposal source), report/, presentation/
+├── proposal/                         # Submitted proposal PDF + TA review
 └── pyproject.toml
 ```
 
@@ -253,7 +255,27 @@ def make_ucb(ctx: AgentContext, alpha: float = 2.0):
 only, `true_click_probs` / `reference_bids`. Learners must not read `true_click_probs`.
 Bids must be non-negative integers with `sum <= budget` (and `<=` remaining budget under `cumulative`);
 
-The final report is `Doc/report/report.tex` (tables and figures are generated into `Doc/report/generated/` and `Doc/report/figures/`).
+#### Sensitivity studies in the final report
+
+| Sweep dir | What it covers |
+|---|---|
+| `results/sweep_tier1` | Tier 1 + known-f best-response dynamics over the full (m, n, kappa) grid |
+| `results/sweep_learners` | 5 learners, Tier 2 + Tier 3, canonical and cumulative budgets, T = 1000 |
+| `results/sweep_discounted` | same learners under the discounted round structure (gamma = 0.999) |
+| `results/sweep_ucb_alpha` | UCB exploration sensitivity, alpha in {0.5, 1} (`ucb_a05`, `ucb_a1`) |
+| `results/sweep_horizon` | long horizon T = 10^4 for m in {2, 3}, n in {10, 20}, kappa = 0.5 |
+
+The exact commands are in the Reproducibility section of the report. Rebuild all report assets with:
+
+```bash
+python run_evaluation.py report --sweep-dir results/sweep_tier1 results/sweep_learners     results/sweep_discounted results/sweep_ucb_alpha results/sweep_horizon --report-dir Doc/report
+```
+
+### 3.5 Deliverable (vi): Final Report & Presentation
+
+- Report: `Doc/report/report.tex` (tables and figures are generated into `Doc/report/generated/` and `Doc/report/figures/`).
+- Presentation: `Doc/presentation/slides.tex` (Beamer; reuses the report figures). Compile both with pdflatex/Overleaf.
+- Submitted proposal and the TA's review: `proposal/` (as the TA asked, the report keeps future work short and focuses on the three tiers).
 
 ---
 

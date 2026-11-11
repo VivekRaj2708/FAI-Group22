@@ -1,0 +1,75 @@
+{
+  "ms": [
+    2,
+    3
+  ],
+  "ns": [
+    10,
+    20
+  ],
+  "kappas": [
+    0.5
+  ],
+  "structures": [
+    "canonical"
+  ],
+  "runs": [
+    [
+      "tier1",
+      "-"
+    ],
+    [
+      "tier2",
+      "ucb"
+    ],
+    [
+      "tier2",
+      "ucb_a05"
+    ],
+    [
+      "tier2",
+      "thompson"
+    ],
+    [
+      "tier2",
+      "greedy"
+    ],
+    [
+      "tier2",
+      "eps_greedy"
+    ],
+    [
+      "tier3",
+      "ucb"
+    ],
+    [
+      "tier3",
+      "ucb_a05"
+    ],
+    [
+      "tier3",
+      "thompson"
+    ],
+    [
+      "tier3",
+      "greedy"
+    ],
+    [
+      "tier3",
+      "eps_greedy"
+    ]
+  ],
+  "learner_kwargs": {},
+  "horizon": 10000,
+  "num_seeds": 30,
+  "seed_offset": 0,
+  "click_value": 5.0,
+  "beta_params": [
+    2.0,
+    5.0
+  ],
+  "gamma": 0.999,
+  "cumulative_rho": 0.5,
+  "prefer_exact": true,
+  "tier1_canonical_only": true
+}
