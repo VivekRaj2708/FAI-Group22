@@ -254,3 +254,28 @@ def test_report_merges_multiple_sweeps(tmp_path):
     assert r"\input{generated/tier1_m2}" in text
     assert r"\input{generated/tier3_oracle_br_canonical}" in text
     assert r"\input{generated/tier2_ucb_canonical}" in text
+
+
+def test_report_alpha_sensitivity_and_long_horizon(tmp_path):
+    base = dict(ms=[2], ns=[4], kappas=[0.5], structures=["canonical"], num_seeds=2)
+    main, alpha, long = tmp_path / "main", tmp_path / "alpha", tmp_path / "long"
+    run_sweep(SweepSpec(runs=[("tier1", "-"), ("tier2", "ucb"), ("tier2", "thompson"), ("tier3", "ucb")],
+                        horizon=30, **base), str(main), workers=1, verbose=False)
+    run_sweep(SweepSpec(runs=[("tier2", "ucb_a05"), ("tier2", "ucb_a1"), ("tier3", "ucb_a05")],
+                        horizon=30, **base), str(alpha), workers=1, verbose=False)
+    run_sweep(SweepSpec(runs=[("tier2", "thompson")], horizon=60, **base), str(long), workers=1, verbose=False)
+
+    from src.eval.report import build_report
+    rep = tmp_path / "report"
+    text = open(build_report([str(main), str(alpha), str(long)], str(rep), fig_ext="png"), encoding="utf-8").read()
+    # alpha variants go to the compact sensitivity tables, not per-learner sections
+    assert r"\input{generated/ucb_alpha_tier2_final_regret}" in text
+    assert r"\input{generated/ucb_alpha_tier3_eq_gap_last}" in text
+    assert "tier2_ucb_a05_canonical" not in text
+    table = (rep / "generated" / "ucb_alpha_tier2_final_regret.tex").read_text(encoding="utf-8")
+    assert r"$\alpha=0.5$" in table and r"$\alpha=2$" in table
+    # the T=60 run is reported separately; the main sections stay at T=30
+    assert r"Long-horizon study ($T=60$)" in text
+    assert r"\input{generated/tier2_long_thompson}" in text
+    assert (rep / "figures" / "tier2_long_cum_regret_m2_n4.png").exists()
+    assert r"\input{generated/tier2_thompson_canonical}" in text

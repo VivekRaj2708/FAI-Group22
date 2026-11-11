@@ -6,6 +6,7 @@ Kept here instead of in ``src/tier2`` so the Tier-2 package needs no changes.
 Registry names (used by ``run_evaluation.py --learner`` and sweep presets):
 
 * ``ucb``         - UCBAgent (Algorithm 1), ``alpha`` default 2
+* ``ucb_a05``, ``ucb_a1`` - UCBAgent with alpha 0.5 / 1 (exploration sensitivity)
 * ``thompson``    - ThompsonSamplingAgent, Beta(1, 1) prior
 * ``greedy``      - GreedyAgent (alpha = 0)
 * ``eps_greedy``  - EpsGreedyAgent, ``epsilon`` default 0.1
@@ -28,6 +29,22 @@ from src.tier2.agents import (
 @register_agent("ucb")
 def make_ucb(ctx: AgentContext, alpha: float = 2.0):
     return UCBAgent(ctx.agent_id, ctx.budget, ctx.num_users, ctx.click_value, alpha=alpha)
+
+
+# Exploration-sensitivity variants of UCB (sweep labels key on the registry name,
+# so each alpha needs its own name). Names avoid '.' so LaTeX figure paths stay valid.
+UCB_ALPHA_VARIANTS = {"ucb_a05": 0.5, "ucb_a1": 1.0}
+
+
+def _register_ucb_variant(name: str, default_alpha: float):
+    @register_agent(name)
+    def _make(ctx: AgentContext, alpha: float = default_alpha):
+        return UCBAgent(ctx.agent_id, ctx.budget, ctx.num_users, ctx.click_value, alpha=alpha)
+    return _make
+
+
+for _name, _alpha in UCB_ALPHA_VARIANTS.items():
+    _register_ucb_variant(_name, _alpha)
 
 
 @register_agent("thompson")
