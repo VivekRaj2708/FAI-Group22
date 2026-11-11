@@ -42,6 +42,9 @@ The experimental study is organized across three tiers:
 ├── src/
 │   ├── agents/
 │   │   ├── base.py                   # BaseAdvertiserAgent abstract class
+│   │   ├── registry.py               # Agent registry used by the evaluation harness
+│   │   ├── reference.py              # Tier-1 reference / oracle agents for the harness
+│   │   ├── tier2_adapters.py         # Registers Tier-2 learners with the harness
 │   │   └── __init__.py
 │   ├── env/
 │   │   ├── auction.py                # BatchedFirstPriceAuction mechanics
@@ -57,6 +60,11 @@ The experimental study is organized across three tiers:
 │   │   ├── agents.py                 # UCB, Thompson Sampling, Greedy, Paced
 │   │   ├── simulation.py             # Single-agent simulation engine
 │   │   └── __init__.py
+│   ├── eval/
+│   │   ├── simulator.py, metrics.py  # Harness simulator and metric computation
+│   │   ├── experiment.py, sweep.py   # Scenarios, seeds, parallel (m, n, kappa) sweeps
+│   │   ├── stats.py, plotting.py     # 95% CIs and figures
+│   │   └── report.py                 # LaTeX tables/figures for Doc/report
 │   └── tier3/
 │       ├── convergence.py            # Convergence rate, cycling, Price of Learning
 │       ├── simulation.py             # MultiAgentSimulator & trial/experiment aggregation
@@ -64,12 +72,16 @@ The experimental study is organized across three tiers:
 ├── tests/
 │   ├── test_tier1.py                 # Tier-1 test suite
 │   ├── test_tier2.py                 # Tier-2 test suite
-│   └── test_tier3.py                 # Tier-3 test suite
+│   ├── test_tier3.py                 # Tier-3 test suite
+│   └── test_eval.py                  # Evaluation harness test suite
 ├── run_tier1.py                      # Tier-1 CLI runner
 ├── run_tier2.py                      # Tier-2 CLI runner
 ├── run_tier3.py                      # Tier-3 Multi-agent CLI runner
+├── run_evaluation.py                 # Evaluation harness CLI (Phase 4/5)
 ├── run_tests.py                      # Consolidated test runner
 ├── Agents.md                         # Architecture and specifications
+├── Doc/                              # main.tex (proposal source), report/, presentation/
+├── proposal/                         # Submitted proposal PDF + TA review
 └── pyproject.toml
 ```
 
@@ -80,7 +92,7 @@ The experimental study is organized across three tiers:
 All deliverables defined in `Doc/main.tex` and `AGENTS.md` are fully implemented and verifiable via the commands below.
 
 ### 3.0 Consolidated Test Suite Runner
-Executes all 26 unit and integration tests across Tier 1, Tier 2, and Tier 3:
+Runs the Tier-1, Tier-2, Tier-3 and evaluation-harness test suites (via pytest):
 ```bash
 python run_tests.py
 ```
@@ -204,26 +216,66 @@ python run_tier3.py --m 2 --n 4 --population all_ucb --round-structure cumulativ
 
 ---
 
-### 3.4 Deliverables (iv) & (v): Sensitivity Analysis & Evaluation Across Factor Matrix (Phase 4 & 5)
-Table 1 of `Doc/main.tex` and Section 6 of `AGENTS.md` specify evaluating market dynamics across advertisers $m \in \{2, 3, 5\}$, users $n \in \{5, 10, 20\}$, and budget tightness $\kappa \in \{0.1, 0.25, 0.5, 1.0\}$:
+```bash
+python run_evaluation.py agents                                   # list registered agents
+python run_evaluation.py run --scenario tier2 --learner ucb --m 2 --n 10 --kappa 0.5 --T 2000
+python run_evaluation.py sweep --preset tier1 --T 1000 --out results/sweep_tier1
+python run_evaluation.py sweep --preset paper --out results/sweep_paper   # Tier-2 + Tier-3 learners
+python run_evaluation.py report --sweep-dir results/sweep_tier1 --report-dir Doc/report
+```
+
+Scenarios: `tier1` (everyone plays the Tier-1 reference b*), `tier2` (agent 0 learns, others fixed at b*;
+non-pure Tier-1 instances excluded), `tier3` (everyone runs the learner), `custom` (one agent name per advertiser).
+Round structures: `canonical`, `discounted`, `cumulative` (fluid-LP regret benchmark).
+
+Every run reports, per seed and as mean ± 95% CI over seeds: cumulative regret (and its log-log slope),
+equilibrium gap ε_t, ‖b^t − b*‖₁, allocation efficiency (expected and realized), platform revenue, welfare,
+advertiser profit, and price of learning (Tier-1 value − learned value).
+
+#### Registered learners
+
+The Tier-2 agents in `src/tier2/agents.py` are registered in `src/agents/tier2_adapters.py`:
+`ucb`, `thompson`, `greedy`, `eps_greedy` and `paced` (`CumulativeBudgetPacedAgent`; it gets the real total
+budget under `cumulative`, and `B_i * T` otherwise). The same names work for `tier3` (all advertisers learn).
+
+#### Plugging in a new agent
+
+Implement `src.agents.base.BaseAdvertiserAgent` and register a factory anywhere under `src/tier2/` or
+`src/tier3/` (the harness imports those packages automatically):
+
+```python
+from src.agents.registry import register_agent, AgentContext
+
+@register_agent("ucb")
+def make_ucb(ctx: AgentContext, alpha: float = 2.0):
+    return UCBAgent(ctx.agent_id, ctx.budget, ctx.num_users, ctx.click_value, alpha=alpha, seed=ctx.seed)
+```
+
+`ctx` also carries `horizon`, `round_structure`, `total_budget` (cumulative variant) and, for oracle agents
+only, `true_click_probs` / `reference_bids`. Learners must not read `true_click_probs`.
+Bids must be non-negative integers with `sum <= budget` (and `<=` remaining budget under `cumulative`);
+
+#### Sensitivity studies in the final report
+
+| Sweep dir | What it covers |
+|---|---|
+| `results/sweep_tier1` | Tier 1 + known-f best-response dynamics over the full (m, n, kappa) grid |
+| `results/sweep_learners` | 5 learners, Tier 2 + Tier 3, canonical and cumulative budgets, T = 1000 |
+| `results/sweep_discounted` | same learners under the discounted round structure (gamma = 0.999) |
+| `results/sweep_ucb_alpha` | UCB exploration sensitivity, alpha in {0.5, 1} (`ucb_a05`, `ucb_a1`) |
+| `results/sweep_horizon` | long horizon T = 10^4 for m in {2, 3}, n in {10, 20}, kappa = 0.5 |
+
+The exact commands are in the Reproducibility section of the report. Rebuild all report assets with:
 
 ```bash
-# 1. Budget Tightness Sweep (Scarce vs. Abundant)
-python run_tier3.py --m 2 --n 5 --kappa 0.1 --rounds 200 --trials 5 --output tier3_kappa_0.10.json
-python run_tier3.py --m 2 --n 5 --kappa 0.25 --rounds 200 --trials 5 --output tier3_kappa_0.25.json
-python run_tier3.py --m 2 --n 5 --kappa 0.50 --rounds 200 --trials 5 --output tier3_kappa_0.50.json
-python run_tier3.py --m 2 --n 5 --kappa 1.00 --rounds 200 --trials 5 --output tier3_kappa_1.00.json
-
-# 2. Competitor Scaling Sweep (m = 2, 3, 5)
-python run_tier3.py --m 2 --n 5 --kappa 0.5 --rounds 200 --trials 5 --output tier3_m2_n5.json
-python run_tier3.py --m 3 --n 5 --kappa 0.5 --rounds 200 --trials 5 --output tier3_m3_n5.json
-python run_tier3.py --m 5 --n 5 --kappa 0.5 --rounds 200 --trials 5 --output tier3_m5_n5.json
-
-# 3. User Scaling Sweep (n = 5, 10, 20)
-python run_tier3.py --m 2 --n 5 --kappa 0.5 --rounds 200 --trials 5 --output tier3_m2_n5.json
-python run_tier3.py --m 2 --n 10 --kappa 0.5 --rounds 200 --trials 5 --output tier3_m2_n10.json
-python run_tier3.py --m 2 --n 20 --kappa 0.5 --rounds 200 --trials 5 --output tier3_m2_n20.json
+python run_evaluation.py report --sweep-dir results/sweep_tier1 results/sweep_learners     results/sweep_discounted results/sweep_ucb_alpha results/sweep_horizon --report-dir Doc/report
 ```
+
+### 3.5 Deliverable (vi): Final Report & Presentation
+
+- Report: `Doc/report/report.tex` (tables and figures are generated into `Doc/report/generated/` and `Doc/report/figures/`).
+- Presentation: `Doc/presentation/slides.tex` (Beamer; reuses the report figures). Compile both with pdflatex/Overleaf.
+- Submitted proposal and the TA's review: `proposal/` (as the TA asked, the report keeps future work short and focuses on the three tiers).
 
 ---
 
