@@ -192,6 +192,30 @@
   \end{itemize}
 \end{frame}
 
+% ---------------------------------------------------------------------------
+\begin{frame}{Live demo}
+  \begin{columns}[T]
+    \begin{column}{0.36\textwidth}
+      \small
+      \textbf{Run it}\\[0.2em]
+      \texttt{python run\_demo.py}\\
+      \texttt{\ \ --scenario tier2}\\
+      \texttt{\ \ --learner thompson}\\[0.4em]
+      or open \texttt{demo/index.html} in a browser (no install).\\[0.8em]
+      \textbf{What to watch}
+      \begin{enumerate}
+        \item Tier 2, Thompson: learned click rates approach the truth on the users it buys; regret flattens.
+        \item Switch to greedy: it never revisits users and regret keeps growing linearly.
+        \item Tier 3, $m=3$, UCB: bids keep moving and $\varepsilon_t$ stays above $\varepsilon(b^*)$.
+      \end{enumerate}
+    \end{column}
+    \begin{column}{0.62\textwidth}
+      \includegraphics[width=\linewidth]{figures/demo_frame.png}\\[-0.2em]
+      {\scriptsize Backup screenshot: Tier 2, Thompson vs.\ fixed $b^*$, $m=2$, $n=8$, $\kappa=0.5$, round 120.}
+    \end{column}
+  \end{columns}
+\end{frame}
+
 \begin{frame}{Takeaways}
   \begin{enumerate}
     \item Learning against a fixed market is cheap: Thompson sampling reaches near-equilibrium
@@ -213,6 +237,8 @@
     \item \texttt{python run\_evaluation.py sweep \dots} then \texttt{report}: every table and
           figure in the report is regenerated from the sweep outputs; \texttt{python -m pytest}
           runs the tests for all tiers.
+    \item Report: \texttt{Doc/report/report.tex} (6 pages) and \texttt{supplementary.tex} (all per-cell tables).
+    \item Live demo: \texttt{python run\_demo.py} or \texttt{demo/index.html}.
   \end{itemize}
   \vspace{0.4em}
   \begin{tabular}{@{}ll@{}}
@@ -220,7 +246,7 @@
     Vivek Raj & Tier 1: knapsack DP, equilibria, social planner \\
     Anvit Aggarwal & Tier 2: UCB, Thompson, greedy, $\epsilon$-greedy, paced learners \\
     Eshaan Ashish Jaiswal & Tier 3: multi-agent simulator, convergence analysis \\
-    Gella Naga Sai Krishna & Evaluation harness, sensitivity study, report, presentation \\
+    Gella Naga Sai Krishna & Evaluation harness, sensitivity study, live demo, report \\
     \bottomrule
   \end{tabular}
 \end{frame}
