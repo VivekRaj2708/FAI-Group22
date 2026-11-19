@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Consolidated Test Suite Runner for FAI-Group22 Project:
-Runs the Tier-1, Tier-2, Tier-3 and evaluation-harness test suites through pytest
+Runs the Tier-1, Tier-2, Tier-3, evaluation-harness and live-demo test suites through pytest
 (the suites use pytest fixtures, so the test functions cannot be called directly).
 """
 
@@ -19,6 +19,7 @@ SUITES = [
     ("Tier-2 Single-Agent Bandit", "tests/test_tier2.py"),
     ("Tier-3 Multi-Agent Simulator & Convergence", "tests/test_tier3.py"),
     ("Evaluation Harness (Phase 4/5)", "tests/test_eval.py"),
+    ("Live Demo", "tests/test_demo.py"),
 ]
 
 

@@ -371,3 +371,9 @@ python run_tier3.py --m 2 --n 5 --kappa 1.0 --rounds 200 --trials 5 --output tie
 python run_tier3.py --m 3 --n 5 --kappa 0.5 --rounds 200 --trials 5 --output tier3_m3_n5.json
 python run_tier3.py --m 5 --n 10 --kappa 0.5 --rounds 200 --trials 5 --output tier3_m5_n10.json
 ```
+
+### 8.6 Final Report, Presentation & Live Demo
+* Report (6 pages): `Doc/report/report.tex`; full per-cell results: `Doc/report/supplementary.tex`.
+* Slides: `Doc/presentation/slides.tex`.
+* Live demo with the real agents: `python run_demo.py --scenario tier2 --learner thompson` (or `--scenario tier3`, `--agents thompson ucb greedy`, `--headless`, `--save demo.gif`).
+* Browser live demo (no install): `demo/index.html`.

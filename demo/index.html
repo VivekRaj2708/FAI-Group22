@@ -1,0 +1,521 @@
+<title>Budgeted Bidding Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Live demo: advertisers learning to bid in a batched first-price ad auction with budgets and unknown click probabilities (FAI Group 22).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: a control strip over a two-column "auction floor" (bid book left, learning + time series right); one column on phones. */
+:root {
+  --bg: #f4f6f9;
+  --panel: #ffffff;
+  --fg: #172031;
+  --muted: #5b6577;
+  --line: #dde2ea;
+  --accent: #3346c8;
+  --good: #0f8a5f;
+  --warn: #b45309;
+  --bad: #c0392b;
+  --s1: #2563eb; --s2: #d97706; --s3: #0d9488; --s4: #db2777; --s5: #7c3aed;
+  --cell: #eef1f6;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141c; --panel: #161d28; --fg: #e6eaf2; --muted: #9aa5b8; --line: #2a3342;
+    --accent: #8f9cff; --good: #34d399; --warn: #fbbf24; --bad: #f87171;
+    --s1: #60a5fa; --s2: #fbbf24; --s3: #2dd4bf; --s4: #f472b6; --s5: #a78bfa;
+    --cell: #1e2734; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141c; --panel: #161d28; --fg: #e6eaf2; --muted: #9aa5b8; --line: #2a3342;
+  --accent: #8f9cff; --good: #34d399; --warn: #fbbf24; --bad: #f87171;
+  --s1: #60a5fa; --s2: #fbbf24; --s3: #2dd4bf; --s4: #f472b6; --s5: #a78bfa;
+  --cell: #1e2734; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; gap: 16px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font: 500 12px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { font: 700 clamp(24px, 3.4vw, 34px)/1.15 var(--font-display); margin: 0; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 72ch; }
+.lede b { color: var(--fg); font-weight: 600; }
+h2 { font: 600 15px/1.3 var(--font-display); margin: 0; letter-spacing: .01em; }
+.sub { color: var(--muted); font-size: 13px; margin: 0; }
+
+.controls {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px; display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: flex-end;
+}
+.field { display: grid; gap: 4px; min-width: 0; }
+.field label { font: 500 11px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+select, input[type=number] {
+  font: 500 14px var(--font-body); color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0;
+}
+input[type=number] { width: 76px; font-family: var(--font-mono); }
+input[type=range] { width: 130px; accent-color: var(--accent); }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+button {
+  font: 600 14px var(--font-body); border-radius: 6px; padding: 7px 14px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--bg); color: var(--fg);
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); min-width: 88px; }
+button:hover { filter: brightness(1.06); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.custom-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; }
+.stat .k { font: 500 11px/1.2 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.stat .v { font: 600 22px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; }
+.stat .r { font: 400 12px/1.2 var(--font-mono); color: var(--muted); }
+
+.floor { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .floor { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+
+.scroll { overflow-x: auto; }
+table.book { border-collapse: separate; border-spacing: 4px; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.book th { font: 500 11px var(--font-mono); color: var(--muted); text-align: center; padding: 0 2px; }
+.book th.adv { text-align: left; white-space: nowrap; padding-right: 6px; }
+.book td.cell {
+  width: 46px; height: 46px; min-width: 40px; text-align: center; vertical-align: middle; border-radius: 6px;
+  background: var(--cell); position: relative; font-size: 15px; font-weight: 500; border: 2px solid transparent;
+}
+.book td.cell .f { position: absolute; left: 4px; bottom: 2px; font-size: 9.5px; color: var(--muted); font-weight: 400; }
+.book td.cell.won { border-color: var(--good); }
+.book td.cell .click { position: absolute; right: 4px; top: 3px; width: 7px; height: 7px; border-radius: 50%; background: var(--good); }
+.book td.cell.best::after { content: ""; position: absolute; left: 4px; top: 4px; width: 0; height: 0; border-top: 7px solid var(--muted); border-right: 7px solid transparent; opacity: .55; }
+.chip { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+.learn { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 4px; align-items: end; height: 150px; border-bottom: 1px solid var(--line); padding-top: 6px; }
+.lcol { display: flex; gap: 2px; align-items: flex-end; height: 100%; justify-content: center; position: relative; }
+.lbar { width: 42%; max-width: 16px; border-radius: 3px 3px 0 0; transition: height .15s linear; }
+.lbar.truth { background: var(--line); }
+.lnames { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 4px; font: 400 10.5px/1.3 var(--font-mono); color: var(--muted); text-align: center; }
+.lnames b { display: block; color: var(--fg); font-weight: 500; }
+
+.charts { display: grid; gap: 12px; }
+.chart { display: grid; gap: 4px; }
+.chart canvas { width: 100%; height: 150px; display: block; }
+.note { font-size: 13px; color: var(--muted); margin: 0; max-width: 80ch; }
+.note code { font-family: var(--font-mono); font-size: 12.5px; color: var(--fg); }
+details { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+details summary { cursor: pointer; font: 600 14px var(--font-display); }
+details p, details li { font-size: 14px; color: var(--muted); max-width: 80ch; }
+details b { color: var(--fg); }
+@media (prefers-reduced-motion: reduce) { .lbar { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">FAI Group 22 · live demo</div>
+    <h1>Learning to bid under a budget</h1>
+    <p class="lede">Each round every advertiser submits a whole bid vector over the users, with
+      <b>Σ<sub>j</sub> b<sub>ij</sub> ≤ B<sub>i</sub></b>. The highest bid on each user wins and pays its bid (first price).
+      A click is worth <b>v = 5</b> and happens with a probability <b>f<sub>ij</sub></b> that the learners never see.
+      They only observe clicks on users they won, and the highest competing bid on every user.</p>
+  </header>
+
+  <section class="controls" aria-label="Simulation settings">
+    <div class="field"><label for="scenario">Market</label>
+      <select id="scenario">
+        <option value="tier2">Tier 2 · one learner vs. b*</option>
+        <option value="tier3">Tier 3 · everyone learns</option>
+        <option value="custom">Custom mix</option>
+      </select></div>
+    <div class="field" id="learnerField"><label for="learner">Learner</label>
+      <select id="learner"></select></div>
+    <div class="field"><label for="m">Advertisers m</label><input id="m" type="number" min="2" max="5" value="2"></div>
+    <div class="field"><label for="n">Users n</label><input id="n" type="number" min="3" max="12" value="8"></div>
+    <div class="field"><label for="kappa">Budget κ</label>
+      <select id="kappa"><option>0.1</option><option>0.25</option><option selected>0.5</option><option>1</option></select></div>
+    <div class="field"><label for="horizon">Rounds T</label>
+      <select id="horizon"><option>200</option><option selected>500</option><option>1000</option><option>3000</option></select></div>
+    <div class="field"><label for="seed">Seed</label><input id="seed" type="number" min="0" value="3"></div>
+    <div class="field"><label for="speed">Speed <span id="speedOut"></span></label><input id="speed" type="range" min="1" max="200" value="30"></div>
+    <div class="btns">
+      <button id="play" class="primary" type="button">Play</button>
+      <button id="step" type="button">Step</button>
+      <button id="finish" type="button">Run to end</button>
+      <button id="reset" type="button">New market</button>
+    </div>
+    <div class="custom-row" id="customRow" hidden></div>
+  </section>
+
+  <section class="stats" aria-live="polite">
+    <div class="stat"><span class="k">Round</span><span class="v" id="stT">0</span><span class="r" id="stTr">of 500</span></div>
+    <div class="stat"><span class="k">Equilibrium gap ε<sub>t</sub></span><span class="v" id="stGap">–</span><span class="r" id="stGapr">b*: –</span></div>
+    <div class="stat"><span class="k">Efficiency (avg 20)</span><span class="v" id="stEff">–</span><span class="r" id="stEffr">b*: –</span></div>
+    <div class="stat"><span class="k">Platform revenue</span><span class="v" id="stRev">–</span><span class="r" id="stRevr">b*: –</span></div>
+    <div class="stat"><span class="k">‖b<sup>t</sup> − b*‖<sub>1</sub></span><span class="v" id="stDist">–</span><span class="r" id="stDistr">bid units</span></div>
+  </section>
+
+  <section class="floor">
+    <div class="card">
+      <div class="card-head"><h2>Bid book, this round</h2><p class="sub" id="budgetNote"></p></div>
+      <div class="scroll"><table class="book" id="book"></table></div>
+      <div class="legend">
+        <span><i class="sw" style="border:2px solid var(--good)"></i>won</span>
+        <span><i class="sw" style="background:var(--good);border-radius:50%;width:8px;height:8px"></i>clicked</span>
+        <span><i class="sw" style="background:var(--cell);position:relative;overflow:hidden"></i>small number = true f (hidden from learners)</span>
+        <span>◤ = advertiser with the highest f on that user</span>
+      </div>
+      <div class="card-head" style="margin-top:6px"><h2>What <span id="focalName">a1</span> has learned</h2>
+        <div class="field"><label for="focal" class="sr">Advertiser</label><select id="focal"></select></div></div>
+      <div class="learn" id="learn"></div>
+      <div class="lnames" id="lnames"></div>
+      <div class="legend"><span><i class="sw" style="background:var(--line)"></i>true f<sub>ij</sub></span><span><i class="sw" id="estSw"></i>empirical s<sub>j</sub>/N<sub>j</sub> (N = impressions won)</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Cumulative regret vs. knapsack best response</h2></div>
+      <div class="charts">
+        <div class="chart"><canvas id="cRegret" aria-label="Cumulative regret per advertiser"></canvas><div class="legend" id="regLegend"></div></div>
+        <div class="chart"><h2>Equilibrium gap ε<sub>t</sub> (moving average 20)</h2><canvas id="cGap" aria-label="Equilibrium gap"></canvas></div>
+        <div class="chart"><h2>Allocation efficiency (moving average 20)</h2><canvas id="cEff" aria-label="Allocation efficiency"></canvas></div>
+      </div>
+      <p class="note">Dashed lines are the Tier-1 reference b*, found by best-response dynamics with known f.
+        Regret is measured with the true f: each round, the best knapsack response to the bids the others actually made, minus the profit actually expected.</p>
+    </div>
+  </section>
+
+  <details>
+    <summary>How the agents bid</summary>
+    <ul>
+      <li><b>Knapsack best response.</b> Winning user j costs c<sub>−i,j</sub>+1. With an estimate f̃<sub>j</sub>, item j is worth f̃<sub>j</sub>v − c<sub>−i,j</sub> − 1 and weighs c<sub>−i,j</sub>+1; a 0–1 knapsack DP over budget B<sub>i</sub> picks the users to buy.</li>
+      <li><b>UCB</b> uses f̃<sub>j</sub> = min(1, s<sub>j</sub>/N<sub>j</sub> + √(α ln t / N<sub>j</sub>)), and 1 for users never won. Round 1 is a zero-bid probe.</li>
+      <li><b>Thompson sampling</b> draws f̃<sub>j</sub> ~ Beta(1+s<sub>j</sub>, 1+N<sub>j</sub>−s<sub>j</sub>).</li>
+      <li><b>Greedy</b> uses s<sub>j</sub>/N<sub>j</sub> with no bonus; <b>ε-greedy</b> buys a random feasible set with probability 0.1.</li>
+      <li><b>Known-f best response</b> knows f and best-responds to last round's bids. It isolates what concurrent adaptation does on its own, without any learning.</li>
+    </ul>
+    <p>This page is a JavaScript port of the project's Python code. The same demo runs on the real agents with
+      <code>python run_demo.py --scenario tier2 --learner thompson</code>. Numbers here are a single seed. The report gives averages over 30 seeds with 95% confidence intervals.</p>
+  </details>
+</div>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- RNG
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function normal(r) { let u = 0; while (u === 0) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
+function gamma(r, a) {
+  if (a < 1) return gamma(r, a + 1) * Math.pow(r(), 1 / a);
+  const d = a - 1 / 3, c = 1 / Math.sqrt(9 * d);
+  for (;;) {
+    let x, v;
+    do { x = normal(r); v = 1 + c * x; } while (v <= 0);
+    v = v * v * v; const u = r();
+    if (u < 1 - 0.0331 * x * x * x * x) return d * v;
+    if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v;
+  }
+}
+function betaSample(r, a, b) { const x = gamma(r, a), y = gamma(r, b); return x / (x + y); }
+
+// ---------------------------------------------------------------- model
+const V = 5;
+function knapsack(est, comp, cap) {
+  // 0-1 knapsack: item j has value est_j*V - (c_j+1), weight c_j+1. Returns {value, bids}.
+  const n = est.length, items = [];
+  for (let j = 0; j < n; j++) {
+    const w = comp[j] + 1, val = est[j] * V - w;
+    if (val > 1e-12 && w <= cap) items.push([j, w, val]);
+  }
+  const dp = new Float64Array(cap + 1), keep = items.map(() => new Uint8Array(cap + 1));
+  items.forEach(([, w, val], k) => {
+    for (let c = cap; c >= w; c--) if (dp[c - w] + val > dp[c] + 1e-12) { dp[c] = dp[c - w] + val; keep[k][c] = 1; }
+  });
+  const bids = new Array(n).fill(0); let c = cap;
+  for (let k = items.length - 1; k >= 0; k--) if (keep[k][c]) { const [j, w] = items[k]; bids[j] = w; c -= w; }
+  return { value: dp[cap], bids };
+}
+function competing(bids, i) {
+  const n = bids[0].length, c = new Array(n).fill(0);
+  bids.forEach((row, k) => { if (k !== i) for (let j = 0; j < n; j++) c[j] = Math.max(c[j], row[j]); });
+  return c;
+}
+function winProbs(bids) {
+  const m = bids.length, n = bids[0].length, q = bids.map(() => new Array(n).fill(0));
+  for (let j = 0; j < n; j++) {
+    let mx = 0; for (let i = 0; i < m; i++) mx = Math.max(mx, bids[i][j]);
+    if (mx <= 0) continue;
+    const top = []; for (let i = 0; i < m; i++) if (bids[i][j] === mx) top.push(i);
+    top.forEach(i => q[i][j] = 1 / top.length);
+  }
+  return q;
+}
+function profits(bids, f) {
+  const q = winProbs(bids);
+  return bids.map((row, i) => row.reduce((s, b, j) => s + q[i][j] * (f[i][j] * V - b), 0));
+}
+function evaluate(bids, f, B, best, bstar) {
+  const q = winProbs(bids), m = bids.length, n = bids[0].length;
+  const p = bids.map((row, i) => row.reduce((s, b, j) => s + q[i][j] * (f[i][j] * V - b), 0));
+  const br = bids.map((_, i) => Math.max(0, knapsack(f[i], competing(bids, i), B[i]).value));
+  const regret = br.map((x, i) => x - p[i]);
+  let rev = 0, eff = 0, dist = 0;
+  for (let i = 0; i < m; i++) for (let j = 0; j < n; j++) {
+    rev += q[i][j] * bids[i][j];
+    if (best[j].includes(i)) eff += q[i][j];
+    dist += Math.abs(bids[i][j] - bstar[i][j]);
+  }
+  return { p, regret, gap: Math.max(0, ...regret), rev, eff: eff / n, dist };
+}
+function makeInstance(m, n, kappa, seed) {
+  const r = mulberry32(seed * 2654435761 >>> 0 ^ 0x9e3779b9);
+  const f = Array.from({ length: m }, () => Array.from({ length: n }, () => Math.round(betaSample(r, 2, 5) * 100) / 100));
+  const Bi = Math.max(1, Math.round(kappa * n));
+  const B = new Array(m).fill(Bi);
+  const best = Array.from({ length: n }, (_, j) => {
+    const mx = Math.max(...f.map(row => row[j])); return f.map((row, i) => i).filter(i => f[i][j] >= mx - 1e-9);
+  });
+  // Tier-1 reference: round-robin best-response dynamics from zero bids.
+  let b = f.map(() => new Array(n).fill(0)), pure = false;
+  for (let it = 0; it < 200 && !pure; it++) {
+    let changed = false;
+    for (let i = 0; i < m; i++) {
+      const br = knapsack(f[i], competing(b, i), B[i]);
+      const cur = profits(b, f)[i];
+      if (br.value > cur + 1e-9) { b[i] = br.bids; changed = true; }
+    }
+    pure = !changed;
+  }
+  return { m, n, f, B, best, bstar: b, pure, ref: evaluate(b, f, B, best, b) };
+}
+
+// ---------------------------------------------------------------- agents
+const AGENTS = {
+  thompson: "Thompson sampling", ucb: "UCB (α = 2)", ucb05: "UCB (α = 0.5)",
+  greedy: "Greedy", eps: "ε-greedy (0.1)", oracle: "Known-f best response", fixed: "Fixed at b*",
+};
+function makeAgent(kind, i, inst, seed) {
+  const n = inst.n, cap = inst.B[i], r = mulberry32((seed * 7919 + i * 104729 + 17) >>> 0);
+  const a = { kind, N: new Array(n).fill(0), s: new Array(n).fill(0), last: null };
+  const learner = !(kind === "oracle" || kind === "fixed");
+  a.bid = function (t) {
+    if (kind === "fixed") return inst.bstar[i].slice();
+    if (kind === "oracle") return knapsack(inst.f[i], a.last || new Array(n).fill(0), cap).bids;
+    if (t <= 1 || !a.last) return new Array(n).fill(0); // probe round
+    const c = a.last;
+    if (kind === "eps" && r() < 0.1) {
+      const order = [...Array(n).keys()].sort(() => r() - 0.5), bids = new Array(n).fill(0); let left = cap;
+      for (const j of order) if (c[j] + 1 <= left && r() < 0.5) { bids[j] = c[j] + 1; left -= c[j] + 1; }
+      return bids;
+    }
+    const est = a.N.map((N, j) => {
+      if (kind === "thompson") return betaSample(r, 1 + a.s[j], 1 + N - a.s[j]);
+      if (N === 0) return 1;
+      const mean = a.s[j] / N;
+      if (kind === "ucb" || kind === "ucb05") {
+        const alpha = kind === "ucb" ? 2 : 0.5;
+        return Math.min(1, mean + Math.sqrt(alpha * Math.log(Math.max(2, t)) / N));
+      }
+      return mean; // greedy, eps
+    });
+    return knapsack(est, c, cap).bids;
+  };
+  a.observe = function (won, click, comp) {
+    a.last = comp;
+    if (learner) for (let j = 0; j < n; j++) if (won[j]) { a.N[j]++; a.s[j] += click[j]; }
+  };
+  a.learner = learner;
+  return a;
+}
+
+// ---------------------------------------------------------------- simulation state
+const $ = id => document.getElementById(id);
+let S = null, playing = false, acc = 0, lastTs = 0;
+
+function agentKinds(m) {
+  const sc = $("scenario").value, L = $("learner").value;
+  if (sc === "tier2") return [L, ...new Array(m - 1).fill("fixed")];
+  if (sc === "tier3") return new Array(m).fill(L);
+  return [...$("customRow").querySelectorAll("select")].slice(0, m).map(s => s.value);
+}
+function clampInput(el, lo, hi) { let v = parseInt(el.value, 10); if (!Number.isFinite(v)) v = lo; v = Math.min(hi, Math.max(lo, v)); el.value = v; return v; }
+
+function newMarket() {
+  const m = clampInput($("m"), 2, 5), n = clampInput($("n"), 3, 12), seed = clampInput($("seed"), 0, 1e9);
+  const kappa = parseFloat($("kappa").value), T = parseInt($("horizon").value, 10);
+  syncCustomRow(m);
+  const inst = makeInstance(m, n, kappa, seed);
+  const kinds = agentKinds(m);
+  S = {
+    inst, T, t: 0, kinds, agents: kinds.map((k, i) => makeAgent(k, i, inst, seed)),
+    rng: mulberry32((seed * 31337 + 7) >>> 0), last: null,
+    cum: kinds.map(() => [0]), gap: [], eff: [],
+  };
+  const focal = $("focal"); const prev = focal.value;
+  focal.innerHTML = kinds.map((k, i) => `<option value="${i}">a${i + 1} · ${AGENTS[k]}</option>`).join("");
+  const firstLearner = kinds.findIndex(k => !(k === "fixed" || k === "oracle"));
+  focal.value = prev && +prev < m ? prev : String(Math.max(0, firstLearner));
+  $("budgetNote").textContent = `B = ${inst.B[0]} per advertiser · b* ${inst.pure ? "is a pure equilibrium" : "is approximate (best-response dynamics did not settle)"}`;
+  $("stTr").textContent = `of ${T}`;
+  $("stGapr").textContent = `b*: ${inst.ref.gap.toFixed(2)}`;
+  $("stEffr").textContent = `b*: ${inst.ref.eff.toFixed(2)}`;
+  $("stRevr").textContent = `b*: ${inst.ref.rev.toFixed(1)}`;
+  setPlaying(false);
+  render();
+}
+
+function stepRound() {
+  if (!S || S.t >= S.T) return false;
+  const { inst } = S, t = S.t + 1, m = inst.m, n = inst.n;
+  const bids = S.agents.map(a => {
+    const b = a.bid(t);
+    return b.reduce((x, y) => x + y, 0) <= inst.B[0] ? b : new Array(n).fill(0);
+  });
+  const ev = evaluate(bids, inst.f, inst.B, inst.best, inst.bstar);
+  const won = bids.map(() => new Array(n).fill(0)), click = bids.map(() => new Array(n).fill(0));
+  for (let j = 0; j < n; j++) {
+    let mx = 0; for (let i = 0; i < m; i++) mx = Math.max(mx, bids[i][j]);
+    if (mx <= 0) continue;
+    const top = []; for (let i = 0; i < m; i++) if (bids[i][j] === mx) top.push(i);
+    const w = top[Math.floor(S.rng() * top.length)];
+    won[w][j] = 1; click[w][j] = S.rng() < inst.f[w][j] ? 1 : 0;
+  }
+  S.agents.forEach((a, i) => a.observe(won[i], click[i], competing(bids, i)));
+  S.t = t; S.last = { bids, won, click, ev };
+  ev.regret.forEach((r, i) => S.cum[i].push(S.cum[i][S.cum[i].length - 1] + r));
+  S.gap.push(ev.gap); S.eff.push(ev.eff);
+  return true;
+}
+
+// ---------------------------------------------------------------- rendering
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+const SERIES = ["--s1", "--s2", "--s3", "--s4", "--s5"];
+function movingAvg(a, w) { const out = []; let s = 0; for (let k = 0; k < a.length; k++) { s += a[k]; if (k >= w) s -= a[k - w]; out.push(s / Math.min(k + 1, w)); } return out; }
+
+function drawChart(canvas, series, opts) {
+  const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+  if (canvas.width !== Math.round(W * dpr)) { canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); }
+  const g = canvas.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const L = 44, R = 8, Tp = 8, Bt = 22, pw = W - L - R, ph = H - Tp - Bt;
+  let ymin = opts.ymin ?? 0, ymax = opts.ymax ?? 0;
+  if (opts.ymax == null) { series.forEach(s => s.data.forEach(v => { if (v > ymax) ymax = v; if (v < ymin) ymin = v; })); if (opts.ref != null) ymax = Math.max(ymax, opts.ref); ymax = ymax <= ymin ? ymin + 1 : ymax * 1.08; }
+  const X = t => L + (t / Math.max(1, opts.T)) * pw, Y = v => Tp + ph - ((v - ymin) / (ymax - ymin)) * ph;
+  g.font = `11px ${css("--font-mono")}`; g.fillStyle = css("--muted"); g.strokeStyle = css("--line"); g.lineWidth = 1;
+  const ticks = niceTicks(ymin, ymax, 4);
+  g.textAlign = "right"; g.textBaseline = "middle";
+  ticks.forEach(v => { const y = Y(v); g.beginPath(); g.moveTo(L, y); g.lineTo(L + pw, y); g.stroke(); g.fillText(fmt(v), L - 6, y); });
+  g.textAlign = "center"; g.textBaseline = "top";
+  niceTicks(0, opts.T, 4).forEach(t => g.fillText(String(t), X(t), Tp + ph + 5));
+  if (opts.ref != null) { g.setLineDash([5, 4]); g.strokeStyle = css("--fg"); g.globalAlpha = .55; g.beginPath(); g.moveTo(L, Y(opts.ref)); g.lineTo(L + pw, Y(opts.ref)); g.stroke(); g.setLineDash([]); g.globalAlpha = 1; }
+  series.forEach(s => {
+    if (s.data.length < 2) return;
+    g.strokeStyle = s.color; g.lineWidth = s.width || 2; g.beginPath();
+    const off = s.offset || 0, step = Math.max(1, Math.floor(s.data.length / (pw * 1.5)));
+    for (let k = 0; k < s.data.length; k += step) { const x = X(k + off), y = Y(s.data[k]); k ? g.lineTo(x, y) : g.moveTo(x, y); }
+    const k = s.data.length - 1; g.lineTo(X(k + off), Y(s.data[k])); g.stroke();
+    g.fillStyle = s.color; g.beginPath(); g.arc(X(k + off), Y(s.data[k]), 3, 0, 7); g.fill();
+  });
+}
+function niceTicks(a, b, n) {
+  const span = b - a; if (span <= 0) return [a];
+  const raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), st = [1, 2, 2.5, 5, 10].map(x => x * mag).find(x => x >= raw);
+  const out = []; for (let v = Math.ceil(a / st) * st; v <= b + 1e-9; v += st) out.push(+v.toFixed(6)); return out;
+}
+function fmt(v) { return Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + "k" : (Math.abs(v) < 10 && v % 1 ? v.toFixed(1) : String(Math.round(v))); }
+
+function render() {
+  if (!S) return;
+  const { inst } = S, m = inst.m, n = inst.n, last = S.last;
+  const bmax = Math.max(...inst.B);
+  // bid book
+  let h = "<thead><tr><th></th>" + Array.from({ length: n }, (_, j) => `<th>u${j + 1}</th>`).join("") + "</tr></thead><tbody>";
+  for (let i = 0; i < m; i++) {
+    h += `<tr><th class="adv"><i class="chip" style="background:var(${SERIES[i]})"></i>a${i + 1} <span style="font-weight:400">${AGENTS[S.kinds[i]]}</span></th>`;
+    for (let j = 0; j < n; j++) {
+      const b = last ? last.bids[i][j] : 0, won = last && last.won[i][j], clk = last && last.click[i][j];
+      const shade = b ? `background:color-mix(in srgb, var(${SERIES[i]}) ${Math.round(18 + 50 * b / bmax)}%, var(--cell))` : "";
+      h += `<td class="cell${won ? " won" : ""}${inst.best[j].includes(i) ? " best" : ""}" style="${shade}" title="f = ${inst.f[i][j].toFixed(2)}, b* = ${inst.bstar[i][j]}">${b || ""}${clk ? '<i class="click"></i>' : ""}<span class="f">${inst.f[i][j].toFixed(2).slice(1)}</span></td>`;
+    }
+    h += "</tr>";
+  }
+  $("book").innerHTML = h + "</tbody>";
+  // learning panel
+  const fi = +$("focal").value || 0, ag = S.agents[fi];
+  $("focalName").textContent = `a${fi + 1}`;
+  const col = `var(${SERIES[fi]})`; $("estSw").style.background = col;
+  $("learn").style.setProperty("--n", n); $("lnames").style.setProperty("--n", n);
+  $("learn").innerHTML = Array.from({ length: n }, (_, j) => {
+    const est = ag.learner ? (ag.N[j] ? ag.s[j] / ag.N[j] : 0) : inst.f[fi][j];
+    return `<div class="lcol" title="true ${inst.f[fi][j].toFixed(2)} · learned ${ag.N[j] ? est.toFixed(2) : "–"}"><div class="lbar truth" style="height:${inst.f[fi][j] * 100}%"></div><div class="lbar" style="height:${est * 100}%;background:${col}"></div></div>`;
+  }).join("");
+  $("lnames").innerHTML = Array.from({ length: n }, (_, j) => `<span><b>u${j + 1}</b>${ag.learner ? "N=" + ag.N[j] : "knows f"}</span>`).join("");
+  // stats
+  $("stT").textContent = S.t;
+  const ev = last ? last.ev : null;
+  $("stGap").textContent = ev ? ev.gap.toFixed(2) : "–";
+  $("stEff").textContent = S.eff.length ? movingAvg(S.eff, 20).pop().toFixed(2) : "–";
+  $("stRev").textContent = ev ? ev.rev.toFixed(1) : "–";
+  $("stDist").textContent = ev ? String(ev.dist) : "–";
+  // charts
+  $("regLegend").innerHTML = S.kinds.map((k, i) => `<span><i class="sw" style="background:var(${SERIES[i]})"></i>a${i + 1} ${AGENTS[k]}: ${S.cum[i][S.cum[i].length - 1].toFixed(1)}</span>`).join("");
+  drawChart($("cRegret"), S.cum.map((d, i) => ({ data: d, color: css(SERIES[i]) })), { T: S.T });
+  drawChart($("cGap"), [{ data: S.gap, color: css("--bad"), width: 1, offset: 1 }, { data: movingAvg(S.gap, 20), color: css("--bad"), width: 2.2, offset: 1 }].map((s, k) => k === 0 ? { ...s, color: css("--line") } : s), { T: S.T, ref: inst.ref.gap });
+  drawChart($("cEff"), [{ data: movingAvg(S.eff, 20), color: css("--good"), offset: 1 }], { T: S.T, ymin: 0, ymax: 1.05, ref: inst.ref.eff });
+}
+
+// ---------------------------------------------------------------- controls
+function speed() { const v = +$("speed").value; return Math.round(Math.pow(v / 200, 1.6) * 400) + 1; }
+function setPlaying(p) { playing = p && S && S.t < S.T; $("play").textContent = playing ? "Pause" : (S && S.t >= S.T ? "Replay" : "Play"); if (playing) { lastTs = 0; acc = 0; requestAnimationFrame(loop); } }
+function loop(ts) {
+  if (!playing) return;
+  if (lastTs) acc += (ts - lastTs) / 1000 * speed();
+  lastTs = ts;
+  let k = Math.floor(acc); acc -= k; let any = false;
+  while (k-- > 0 && stepRound()) any = true;
+  if (any) render();
+  if (S.t >= S.T) { setPlaying(false); return; }
+  requestAnimationFrame(loop);
+}
+function syncCustomRow(m) {
+  const row = $("customRow"), show = $("scenario").value === "custom";
+  row.hidden = !show; $("learnerField").hidden = show;
+  const existing = [...row.querySelectorAll("select")].map(s => s.value);
+  const defaults = ["thompson", "ucb", "greedy", "eps", "ucb05"];
+  row.innerHTML = Array.from({ length: m }, (_, i) =>
+    `<div class="field"><label for="cust${i}">a${i + 1}</label><select id="cust${i}">${Object.entries(AGENTS).map(([k, v]) => `<option value="${k}"${(existing[i] || defaults[i]) === k ? " selected" : ""}>${v}</option>`).join("")}</select></div>`).join("");
+  row.querySelectorAll("select").forEach(s => s.addEventListener("change", newMarket));
+}
+$("learner").innerHTML = Object.entries(AGENTS).filter(([k]) => k !== "fixed").map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+$("speedOut").textContent = "";
+$("speed").addEventListener("input", () => { $("speedOut").textContent = `${speed()}/s`; });
+$("speedOut").textContent = `${speed()}/s`;
+$("play").addEventListener("click", () => { if (S.t >= S.T) newMarket(); setPlaying(!playing); });
+$("step").addEventListener("click", () => { setPlaying(false); stepRound(); render(); });
+$("finish").addEventListener("click", () => { setPlaying(false); while (stepRound()); render(); setPlaying(false); });
+$("reset").addEventListener("click", newMarket);
+["scenario", "learner", "m", "n", "kappa", "horizon", "seed"].forEach(id => $(id).addEventListener("change", newMarket));
+$("focal").addEventListener("change", render);
+window.addEventListener("resize", render);
+if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", render);
+new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+newMarket();
+// Open in a realistic working state: the first 60 rounds already played.
+for (let k = 0; k < 60; k++) stepRound();
+render();
+</script>
