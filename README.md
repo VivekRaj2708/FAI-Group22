@@ -35,6 +35,105 @@ The experimental study is organized across three tiers:
 
 ---
 
+## Final report and quick start
+
+- **Final report (8 pages):** [`Doc/report/final_report.tex`](Doc/report/final_report.tex). It extends the
+  project-review submission ([`Doc/main.tex`](Doc/main.tex)) with Methodology, Results and Contribution sections.
+  Compile with `pdflatex final_report` (twice) from `Doc/report/`, or upload `Doc/` to Overleaf; `arxiv.sty` is included.
+- **Per-cell tables with 95% CIs:** [`Doc/report/supplementary.tex`](Doc/report/supplementary.tex).
+
+```bash
+pip install -r requirements.txt
+python run_tests.py            # 54 tests: Tier 1, Tier 2, Tier 3, evaluation harness, demo
+python report_numbers.py       # recomputes every number in the final report from results/sweep_*/summary.csv
+python run_demo.py             # live demo (or open demo/index.html in a browser)
+```
+
+## Results at a glance
+
+All runs use 30 seeds per cell over m ∈ {2,3,5}, n ∈ {5,10,20,50} and budget level κ ∈ {0.1,0.25,0.5,1}
+(48 cells), with click value v = 5 and f_ij ~ Beta(2,5). Shaded bands are 95% confidence intervals.
+
+| Tier 2 learner (canonical, T = 1000) | Regret / round | Regret exponent | Cells won |
+|---|---|---|---|
+| Thompson sampling | **0.49** | **0.33** (0.2 at T = 10^4) | **47 / 47** |
+| UCB, α = 0.5 | 0.73 | 0.46 | – |
+| UCB, α = 2 | 1.77 | 0.73 | 0 |
+| ε-greedy (ε = 0.1) | 1.22 | 0.66 | 0 |
+| Greedy | 2.95 | 0.79 (1.00 at T = 10^4) | 0 |
+
+| Tier 3 (all advertisers learn) | Final eq. gap m = 2 / 3 / 5 | Efficiency loss vs Tier 1 |
+|---|---|---|
+| Known-f best response (control) | 0.76 / 1.42 / 2.37 | 0.04 |
+| Thompson sampling | **0.67 / 1.25** / 2.48 | **0.02** |
+| UCB, α = 2 | 2.32 / 3.67 / 4.93 | 0.23 |
+| Greedy | 4.79 / 4.82 / 4.42 | 0.29 |
+
+**Tier 1: equilibrium efficiency by (m, n, κ).** Scarce budgets cost efficiency even with known click probabilities.
+
+![Tier-1 efficiency heatmap](docs/screenshots/tier1_efficiency_heatmap.png)
+
+**Tier 2: cumulative regret of the single learner** (m = 2, n = 10, κ = 0.5), T = 1000 (left) and T = 10^4 (right).
+
+<p>
+<img src="docs/screenshots/tier2_cum_regret_T1000.png" width="49%" alt="Tier-2 cumulative regret, T=1000">
+<img src="docs/screenshots/tier2_cum_regret_T10000.png" width="49%" alt="Tier-2 cumulative regret, T=10000">
+</p>
+
+**Tier 2: Thompson sampling final regret in every cell.**
+
+![Thompson sampling regret heatmap](docs/screenshots/tier2_thompson_regret_heatmap.png)
+
+**Tier 3: equilibrium gap and allocation efficiency when every advertiser learns** (m = 2, n = 10, κ = 0.5).
+
+<p>
+<img src="docs/screenshots/tier3_equilibrium_gap.png" width="49%" alt="Tier-3 equilibrium gap">
+<img src="docs/screenshots/tier3_efficiency.png" width="49%" alt="Tier-3 allocation efficiency">
+</p>
+
+**Tier 3 over T = 10^4:** the gap keeps shrinking for TS and UCB, but not for greedy.
+
+![Tier-3 equilibrium gap, T=10^4](docs/screenshots/tier3_equilibrium_gap_T10000.png)
+
+**Live demo** (`python run_demo.py`): bids, wins, clicks, learned vs. true click rates, regret, gap and efficiency.
+
+![Live demo](docs/screenshots/live_demo.png)
+
+### Verifying the reported results
+
+Every table and in-text number in the final report is recomputed from the committed sweep summaries by:
+
+```bash
+python report_numbers.py                 # all sections
+python report_numbers.py --section t2    # t1 | t2 | t3 | rob
+```
+
+To regenerate the sweeps from scratch (the exact settings are also saved in each `results/sweep_*/spec.json`),
+then rebuild the figures and per-cell tables:
+
+```bash
+python run_evaluation.py sweep --preset tier1 --T 1000 --out results/sweep_tier1
+python run_evaluation.py sweep --preset paper --T 1000 --structures canonical cumulative \
+    --learners ucb thompson greedy eps_greedy paced --scenarios tier2 tier3 \
+    --out results/sweep_learners                     # ~20 min on 14 cores
+python run_evaluation.py sweep --preset paper --T 1000 --structures discounted \
+    --learners ucb thompson greedy eps_greedy paced --scenarios tier2 tier3 \
+    --workers 8 --out results/sweep_discounted
+python run_evaluation.py sweep --preset paper --T 1000 --structures canonical \
+    --learners ucb_a05 ucb_a1 --scenarios tier2 tier3 \
+    --workers 8 --out results/sweep_ucb_alpha
+python run_evaluation.py sweep --preset paper --T 10000 --m 2 3 --n 10 20 --kappa 0.5 \
+    --structures canonical --learners ucb ucb_a05 thompson greedy eps_greedy \
+    --scenarios tier2 tier3 --workers 8 --out results/sweep_horizon
+python run_evaluation.py report --sweep-dir results/sweep_tier1 results/sweep_learners \
+    results/sweep_discounted results/sweep_ucb_alpha results/sweep_horizon --report-dir Doc/report
+```
+
+`report_numbers.py` needs only the committed `summary.csv` files; the large `aggregates.json` files
+(per-round curves, used for the figures) are git-ignored and are recreated by the sweeps.
+
+---
+
 ## 2. Directory Structure
 
 ```
@@ -79,8 +178,10 @@ The experimental study is organized across three tiers:
 ├── run_tier3.py                      # Tier-3 Multi-agent CLI runner
 ├── run_evaluation.py                 # Evaluation harness CLI (Phase 4/5)
 ├── run_tests.py                      # Consolidated test runner
+├── report_numbers.py                 # Recomputes every number in the final report from results/
 ├── run_demo.py                       # Live demo: animated market using the real agents
 ├── demo/index.html                   # Browser live demo (no install; JS port of the model)
+├── docs/screenshots/                 # Result figures shown in this README
 ├── Agents.md                         # Architecture and specifications
 ├── Doc/                              # main.tex (proposal source), report/, presentation/
 ├── proposal/                         # Submitted proposal PDF + TA review
@@ -276,8 +377,9 @@ python run_evaluation.py report --sweep-dir results/sweep_tier1 results/sweep_le
 
 ### 3.5 Deliverable (vi): Final Report & Presentation
 
-- Report (6 pages): `Doc/report/report.tex`. Model, methodology, the headline tables and figures, and the
-  discussion of hypotheses H1-H3.
+- **Final report (8 pages): `Doc/report/final_report.tex`.** The project-review submission completed with
+  Methodology (algorithms in detail), Results (figures, tables, discussion of H1-H3) and Contribution sections.
+- Earlier 6-page version: `Doc/report/report.tex`.
 - Supplementary material: `Doc/report/supplementary.tex`. Every per-cell table and figure with 95% CIs,
   pulled in from `Doc/report/generated/` and `Doc/report/figures/` (regenerated by `run_evaluation.py report`).
 - Presentation: `Doc/presentation/slides.tex` (Beamer; reuses the report figures and includes a live-demo slide).

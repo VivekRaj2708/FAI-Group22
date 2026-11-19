@@ -373,7 +373,7 @@ python run_tier3.py --m 5 --n 10 --kappa 0.5 --rounds 200 --trials 5 --output ti
 ```
 
 ### 8.6 Final Report, Presentation & Live Demo
-* Report (6 pages): `Doc/report/report.tex`; full per-cell results: `Doc/report/supplementary.tex`.
+* Final report (8 pages): `Doc/report/final_report.tex`; earlier 6-page version `Doc/report/report.tex`; full per-cell results: `Doc/report/supplementary.tex`; `python report_numbers.py` recomputes every reported number.
 * Slides: `Doc/presentation/slides.tex`.
 * Live demo with the real agents: `python run_demo.py --scenario tier2 --learner thompson` (or `--scenario tier3`, `--agents thompson ucb greedy`, `--headless`, `--save demo.gif`).
 * Browser live demo (no install): `demo/index.html`.

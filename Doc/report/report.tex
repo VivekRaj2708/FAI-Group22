@@ -125,7 +125,7 @@ and it separates the effect of concurrent adaptation from the effect of not know
 simulator collects bids, resolves the auction with the shared auction engine and returns feedback. An
 infeasible bid vector is replaced by zeros. This happens only under cumulative budgets, when an agent
 that does not track its campaign budget (fixed $b^*$ or a myopic learner) bids more than it has left,
-and it effectively ends that agent's campaign; the paced agent never triggers it. Metrics are computed with the true
+and it effectively ends that agent's campaign. Metrics are computed with the true
 $f$, which the agents never see:
 \begin{itemize}
   \item \textbf{Regret} $\Reg^{(i)}_T=\sum_t\big(p_i^*(c^t_{-i})-p_i(b^t)\big)$, where $p_i^*$ is the
@@ -282,8 +282,8 @@ early rounds but changes no conclusion. TS again wins all $47$ Tier-2 cells, wit
 $0.51$ ($\epsilon$-greedy), $0.59$ (UCB) and $0.63$ (greedy). Under a \emph{cumulative} campaign budget
 the ranking changes. A myopic learner spends as if the budget reset every round and exhausts it in about half
 the horizon. The paced agent has the lowest regret exponent against the fluid benchmark in Tier~2
-($2.7$, against $5.8$--$24.6$ for the myopic learners) and the lowest mean regret ($1378$, against
-$2912$ for UCB). TS still has the lowest regret in $26$ of $47$ cells. In Tier~3 the paced agent has the
+($2.7$, against $5.8$--$24.6$ for the myopic learners) and a lower mean regret than UCB ($1378$
+against $2912$). TS has the lowest mean regret ($1180$) and the lowest regret in $26$ of $47$ cells. In Tier~3 the paced agent has the
 smallest final gap ($2.52/3.21/3.89$ for $m=2/3/5$, against $4.1$--$5.0$ for TS) and the smallest
 revenue loss ($5.9$ against $10$--$13$). With one campaign budget, pacing matters more than the choice
 of bandit index. Under per-round budgets the paced agent's dual price stays at $0$, and it behaves
