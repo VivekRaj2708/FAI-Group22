@@ -1,0 +1,31 @@
+name: Build final report
+
+on:
+  push:
+    paths: ["Doc/report/**", ".github/workflows/report.yml"]
+  pull_request:
+    paths: ["Doc/report/**", ".github/workflows/report.yml"]
+  workflow_dispatch:
+
+jobs:
+  pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile final_report.tex
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: final_report.tex
+          working_directory: Doc/report
+      - name: Check page limit (8 pages)
+        run: |
+          sudo apt-get install -y -qq poppler-utils > /dev/null
+          pages=$(pdfinfo Doc/report/final_report.pdf | awk '/^Pages:/ {print $2}')
+          echo "final_report.pdf has $pages pages"
+          echo "### final_report.pdf: $pages pages (limit 8)" >> "$GITHUB_STEP_SUMMARY"
+          test "$pages" -le 8
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: final_report
+          path: Doc/report/final_report.pdf

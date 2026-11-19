@@ -181,8 +181,8 @@ $(m,n,\kappa)$ grid; per-cell values with CIs are in the generated tables.
   learner buy more exploratory impressions per round.
   \item \textbf{Cumulative budgets: pacing helps, but no learner is good yet.} With a total budget of
   $\rho TB_i$, the paced agent (\texttt{CumulativeBudgetPacedAgent}) has a regret slope of $2.7$ against the
-  fluid benchmark, against $5.8$--$24.6$ for the myopic learners, and the lowest mean regret
-  ($1378$ versus $2912$ for UCB). It wins $13$ of $47$ cells, and Thompson wins $26$. All slopes above $1$
+  fluid benchmark, against $5.8$--$24.6$ for the myopic learners, and a lower mean regret than UCB
+  ($1378$ versus $2912$), although Thompson's is lower still ($1180$). It wins $13$ of $47$ cells, and Thompson wins $26$. All slopes above $1$
   mean regret accelerates once budgets run out. In the Tier-2 cumulative runs the fixed $b^*$ opponents
   also exhaust their budgets and drop out, so the ``fixed opponent'' assumption does not hold under this
   structure.
