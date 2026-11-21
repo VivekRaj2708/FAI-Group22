@@ -6,3 +6,17 @@ results/**/aggregates.json
 results/run*/
 results/sweep_learners/per_seed.csv
 results/sweep_discounted/per_seed.csv
+
+# LaTeX build artefacts
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Compiled report PDFs (regenerable via pdflatex; figures in figures/ remain tracked)
+Doc/report/*.pdf
+!Doc/report/figures/*.pdf
+
+

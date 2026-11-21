@@ -189,5 +189,48 @@ def write_outputs(aggs: List[Dict[str, Any]], out_dir: str) -> None:
 
 
 def load_aggregates(out_dir: str) -> List[Dict[str, Any]]:
-    with open(os.path.join(out_dir, "aggregates.json"), encoding="utf-8") as fh:
-        return json.load(fh)
+    agg_path = os.path.join(out_dir, "aggregates.json")
+    if os.path.exists(agg_path):
+        with open(agg_path, encoding="utf-8") as fh:
+            return json.load(fh)
+    csv_path = os.path.join(out_dir, "summary.csv")
+    if os.path.exists(csv_path):
+        aggs = []
+        with open(csv_path, encoding="utf-8") as fh:
+            reader = csv.DictReader(fh)
+            for row in reader:
+                cfg = {
+                    "scenario": row["scenario"],
+                    "learner": row["learner"],
+                    "round_structure": row["round_structure"],
+                    "m": int(row["m"]),
+                    "n": int(row["n"]),
+                    "kappa": float(row["kappa"]),
+                    "horizon": int(row["horizon"]),
+                    "click_value": 5.0,
+                }
+                who = "bstar" if row["scenario"] == "tier1" else row["learner"]
+                label = (f"{row['scenario']}|{who}|{row['round_structure']}|m{row['m']}|n{row['n']}"
+                         f"|k{float(row['kappa']):g}|T{row['horizon']}")
+                summary = {}
+                for k, v in row.items():
+                    if k.endswith("_ci"):
+                        base = k[:-3]
+                        if base in row and row[base] != "":
+                            try:
+                                mean_val = float(row[base])
+                                ci_val = float(v) if v != "" else 0.0
+                                summary[base] = {"mean": mean_val, "ci": ci_val}
+                            except ValueError:
+                                pass
+                aggs.append({
+                    "label": label,
+                    "config": cfg,
+                    "n_seeds": int(row["n_used"]) + int(row["n_excluded"]),
+                    "n_used": int(row["n_used"]),
+                    "n_excluded": int(row["n_excluded"]),
+                    "summary": summary,
+                    "curves": {},
+                })
+        return aggs
+    raise FileNotFoundError(f"Neither aggregates.json nor summary.csv found in {out_dir}")

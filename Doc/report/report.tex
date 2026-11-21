@@ -140,9 +140,9 @@ $f$, which the agents never see:
 \end{itemize}
 ``Final'' values average the last $10\%$ of rounds.
 
-\paragraph{Instances and grid.} Each seed draws $f_{ij}\sim\mathrm{Beta}(2,5)$ (mean $0.29$) and sets
-$B_i=\max(1,\mathrm{round}(\kappa n))$ for a nominal budget level $\kappa$. The grid is
-$m\in\{2,3,5\}\times n\in\{5,10,20,50\}\times\kappa\in\{0.1,0.25,0.5,1\}$ ($48$ cells), with
+\paragraph{Instances and grid.} Click rates are drawn as $f_{ij}\sim\mathrm{Beta}(2,5)$ (mean $0.29$);
+budgets are $B_i=\max(1,\mathrm{round}(\kappa n))$. The parameter grid consists of
+$m\in\{2,3,5\}$, $n\in\{5,10,20,50\}$, and $\kappa\in\{0.1,0.25,0.5,1\}$ ($48$ cells), with
 $30$ seeds per cell, horizon $T=10^3$, and Student-$t$ $95\%$ intervals. The realised tightness
 $\kappa_i=B_i/\sum_j(c^*_{-i,j}+1)$ at $b^*$ lies between $0.10$ and $0.53$ on average, so the grid
 spans scarce to moderate budgets. A long-horizon study uses $T=10^4$ on $m\in\{2,3\}$, $n\in\{10,20\}$,

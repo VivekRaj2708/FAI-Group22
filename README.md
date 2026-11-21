@@ -276,6 +276,7 @@ python run_evaluation.py report --sweep-dir results/sweep_tier1 results/sweep_le
 
 ### 3.5 Deliverable (vi): Final Report & Presentation
 
+- Master report: `Doc/report/master.tex`. Consolidated deliverable combining the 6-page main report with the full supplementary material, mathematical formulations, and complete experimental grid in a single document.
 - Report (6 pages): `Doc/report/report.tex`. Model, methodology, the headline tables and figures, and the
   discussion of hypotheses H1-H3.
 - Supplementary material: `Doc/report/supplementary.tex`. Every per-cell table and figure with 95% CIs,
