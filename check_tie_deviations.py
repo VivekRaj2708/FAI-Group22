@@ -15,7 +15,13 @@ bid vector is then re-evaluated with the auction engine, so the check does not t
 """
 import argparse
 import itertools
+import os
 from concurrent.futures import ProcessPoolExecutor
+
+# One BLAS thread per process: the work is parallel across processes, and per-process BLAS thread
+# pools can exhaust memory on machines with many cores.
+for _var in ("OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS", "MKL_NUM_THREADS"):
+    os.environ.setdefault(_var, "1")
 
 from src.env.auction import BatchedFirstPriceAuction
 from src.eval.experiment import ExperimentConfig, tier1_reference
@@ -71,7 +77,8 @@ def check(args):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--workers", type=int, default=None)
+    ap.add_argument("--workers", type=int, default=min(4, os.cpu_count() or 1),
+                    help="parallel processes (default: up to 4)")
     a = ap.parse_args()
     grid = list(itertools.product([2, 3, 5], [5, 10, 20, 50], [0.1, 0.25, 0.5, 1.0], range(30)))
     with ProcessPoolExecutor(a.workers) as ex:

@@ -55,7 +55,7 @@ pip install -r requirements.txt
 
 python run_tests.py         # 57 tests: Tier 1, Tier 2, Tier 3, evaluation harness, demo
 python report_numbers.py    # recomputes every number in the final report (see Section 4)
-python check_tie_deviations.py   # checks the Tier-1 profiles against tie-bid deviations (about 10 s)
+python check_tie_deviations.py   # checks the Tier-1 profiles against tie-bid deviations (about 30 s)
 python run_demo.py          # live, animated market using the real agents
 ```
 
@@ -224,8 +224,8 @@ Assigned tasks are from the proposal; the delivered work is taken from the Git c
 | Member | Assigned task | Delivered (commits) | Status |
 |---|---|---|---|
 | Vivek Raj | Tier 1: knapsack best response, equilibrium computation, reference `b*` | Auction engine and instance generator (`src/env/`); knapsack DP, best-response dynamics, fictitious play, exhaustive pure-profile search, social planner (`src/tier1/`); `run_tier1.py`; Tier-1 tests; proposal source and project setup | Fulfilled |
-| Anvit Aggarwal | Tier 2: UCB, Thompson sampling, greedy baselines, budget-paced learner, regret evaluation | Shared agent interface (`src/agents/base.py`); UCB, Thompson sampling, greedy, ε-greedy and dual-paced learners and the single-learner simulation (`src/tier2/`); `run_tier2.py`; Tier-2 tests | Fulfilled |
+| Anvit Aggarwal | Tier 2: UCB, Thompson sampling, greedy baselines, budget-paced learner, regret evaluation | Shared agent interface (`src/agents/base.py`); UCB, Thompson sampling, greedy, ε-greedy and dual-paced learners and the single-learner simulation (`src/tier2/`); `run_tier2.py`; Tier-2 tests; edge-case tests (tie-aware best response vs. brute force, multi-way ties, unwinnable markets) | Fulfilled |
 | Eshaan Ashish Jaiswal | Tier 3: multi-agent simulator and convergence data as `m` and `n` vary | Multi-agent simulator, convergence-rate and cycling analysis, price of learning (`src/tier3/`); Tier-1 knapsack and equilibrium agents; `run_tier3.py`, `collect_convergence_logs.py`, test runner `run_tests.py`; Tier-3 tests | Fulfilled |
-| Gella Naga Sai Krishna | Evaluation harness, sensitivity study, final report | Evaluation harness (`src/eval/`, `run_evaluation.py`) and agent registry; all sweeps in `results/`; `report_numbers.py`; live demo (`run_demo.py`, `demo/`); final report, README | Fulfilled |
+| Gella Naga Sai Krishna | Evaluation harness, sensitivity study, final report | Evaluation harness (`src/eval/`, `run_evaluation.py`) and agent registry; all sweeps in `results/`; `report_numbers.py`; tie-deviation check (`check_tie_deviations.py`); live demo (`run_demo.py`, `demo/`); final report, README | Fulfilled |
 
-The proposal was written jointly, and all work was merged into `main` through pull requests #1–#5. Section 6 of the report has the same table.
+The proposal was written jointly. The tiers were merged into `main` through pull requests #1–#5, and final fixes were committed to `main` directly. Section 6 of the report has the same table.

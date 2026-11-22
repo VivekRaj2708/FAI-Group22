@@ -551,7 +551,7 @@ multiple-choice knapsack.
 % =====================================================================
 \section{Contribution}\label{sec:contrib}
 Table~\ref{tab:contrib} lists each member's assigned task (from the proposal), what they committed (from the Git
-history) and whether the task was fulfilled. The proposal was written jointly; all work was merged through pull requests \#1--\#5.
+history) and whether the task was fulfilled. The proposal was written jointly; the tiers were merged via pull requests \#1--\#5.
 
 \begin{table}[h]
 \caption{Assigned tasks (from the proposal), delivered code (from the commit history) and status.}\label{tab:contrib}
@@ -568,7 +568,7 @@ tests; proposal source and project setup & Fulfilled\\
 Anvit Aggarwal & Tier-2 learners (UCB, TS, greedy baselines) with regret evaluation, and the budget-paced
 variant for cumulative budgets & Shared agent interface (\texttt{src/agents/base.py}); UCB, TS, greedy,
 $\epsilon$-greedy and dual-paced learners and the single-learner simulation (\texttt{src/tier2/});
-\texttt{run\_tier2.py}; Tier-2 tests & Fulfilled\\
+\texttt{run\_tier2.py}; Tier-2 and edge-case tests & Fulfilled\\
 Eshaan Ashish Jaiswal & Tier-3 simulator with all advertisers learning; convergence data as $m$ and $n$ vary &
 Multi-agent simulator, convergence-rate and cycling analysis, price of learning (\texttt{src/tier3/});
 Tier-1 knapsack and equilibrium agents; \texttt{run\_tier3.py}, \texttt{collect\_convergence\_logs.py},
@@ -576,7 +576,7 @@ test runner \texttt{run\_tests.py}; Tier-3 tests & Fulfilled\\
 Gella Naga Sai Krishna & Shared evaluation harness (metrics, plots); sensitivity study over round structures
 and budget levels; final report & Evaluation harness (\texttt{src/eval/},
 \texttt{run\_evaluation.py}), agent registry; all sweeps in \texttt{results/}; \texttt{report\_numbers.py};
-live demo; this report and README & Fulfilled\\
+tie-deviation check (\texttt{check\_tie\_deviations.py}); live demo; this report and README & Fulfilled\\
 \bottomrule
 \end{tabularx}
 \end{table}
