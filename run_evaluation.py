@@ -15,7 +15,7 @@ Examples
   python run_evaluation.py sweep --preset paper --learners ucb thompson greedy --out results/sweep_paper
 
   # build report tables/figures from a sweep
-  python run_evaluation.py report --sweep-dir results/sweep_tier1 --report-dir Doc/report
+  python run_evaluation.py report --sweep-dir results/sweep_tier1 --report-dir results/report_assets
 """
 import argparse
 import json
@@ -125,7 +125,7 @@ def main(argv=None):
 
     rp = sub.add_parser("report", help="build LaTeX tables + figures from a sweep")
     rp.add_argument("--sweep-dir", required=True, nargs="+", help="one or more sweep dirs (first wins on duplicate configs)")
-    rp.add_argument("--report-dir", default="Doc/report")
+    rp.add_argument("--report-dir", default="results/report_assets")
     rp.add_argument("--fig-ext", default="pdf", choices=["pdf", "png"])
     rp.set_defaults(fn=cmd_report)
 

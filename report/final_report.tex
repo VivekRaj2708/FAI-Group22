@@ -1,4 +1,4 @@
-% Final report (8 pages) - FAI Group 22. Extends the project-review submission (Doc/main.tex)
+% Final report (8 pages) - FAI Group 22. Extends the project-review submission (proposal/project_proposal.tex)
 % with Methodology, Results and Contribution sections, in the same template.
 % Compile from this directory: pdflatex final_report && pdflatex final_report   (arxiv.sty is here)
 % Every number is recomputed from results/sweep_*/summary.csv by `python report_numbers.py`
@@ -70,7 +70,8 @@ $95\%$ confidence intervals, across $48$ market sizes ($m\in\{2,3,5\}$ advertise
 users, four budget levels) and three budget structures. Thompson sampling has the lowest regret in all
 $47$ Tier-2 cells that admit a pure equilibrium, with regret growing as $T^{0.33}$ at $T=10^3$ and
 $T^{0.2}$ at $T=10^4$. When all advertisers learn, the market stays away from equilibrium by an amount
-that grows with $m$, but most of that gap is already present when click probabilities are known.
+that grows with $m$; with Thompson sampling, nearly all of that gap is already present when click
+probabilities are known.
 Scarce budgets reduce efficiency through the equilibrium itself, not by slowing learning.
 \end{abstract}
 
@@ -166,7 +167,11 @@ Algorithm~\ref{alg:tier1} shows the solver (\texttt{src/tier1/equilibrium.py}): 
 profiles for small games, otherwise round-robin best-response dynamics (BRD) from the all-zero profile,
 keeping the lowest-gap profile seen. The fictitious-play fallback best-responds to a $20$-sample estimate of
 the opponents' empirical mixture for $150$ rounds. An instance is labelled \emph{pure} when the returned
-profile has $\varepsilon\le10^{-6}$.
+profile has $\varepsilon\le10^{-6}$ ($10^{-4}$ if it comes from fictitious play). This is a \emph{restricted}
+notion: no advertiser gains by a deviation that bids $c_{-i,j}+1$ or $0$ on each user. An exact best response
+over all of $S_i$, which may also tie a rival's bid (\texttt{check\_tie\_deviations.py}), improves on $62\%$ of
+these profiles (median gain $8\%$ of an advertiser's profit; $18\%$ of profiles at $\kappa=0.1$, $99\%$ at
+$\kappa=1$). Our learners also bid only $c_{-i,j}+1$ or $0$, so regret and gap compare like with like.
 The \emph{social planner} assigns each user to $\arg\max_i f_{ij}$, which upper-bounds welfare
 (\texttt{src/tier1/social\_planner.py}).
 
@@ -260,7 +265,7 @@ does not track its campaign budget bids more than it has left. For profile $b^t$
   \item \textbf{Regret} $\Reg^{(i)}_T=\sum_t\big(p_i^\ast(c^t_{-i})-p_i(b^t)\big)$ against the
         knapsack value~\eqref{eq:knap} at the competing bids actually played. We summarise its growth by
         the least-squares slope of $\log\Reg_t$ on $\log t$ for $t\ge T/10$ (the \emph{regret exponent}:
-        $1$ is linear, $0.5$ is $\sqrt T$-type, near $0$ is logarithmic). Under cumulative budgets the
+        $1$ is linear, $0.5$ is $\sqrt T$-type, smaller is slower; a fitted slope, not a proven rate). Under cumulative budgets the
         benchmark is the fluid LP: per round, the fractional-knapsack value at capacity total$/T$.
   \item \textbf{Equilibrium gap} $\varepsilon_t=\max_i\max\{0,\ p_i^\ast(c^t_{-i})-p_i(b^t)\}$ and
         distance $\|b^t-b^\ast\|_1$.
@@ -279,21 +284,21 @@ $B_i=\max(1,\mathrm{round}(\kappa n))$ for a nominal budget level $\kappa$
 $\kappa_i=B_i/\sum_j(c^\ast_{-i,j}+1)$ at $b^\ast$, the proposal's definition, alongside the nominal level.
 
 \begin{table}[t]
-\caption{Experimental factors. All $48$ $(m,n,\kappa)$ cells are run for every learner, tier and budget
-structure listed; every cell uses $30$ seeds.}\label{tab:design}
+\caption{Experimental factors. At $T=10^3$ all $48$ $(m,n,\kappa)$ cells are run for every learner and
+budget structure, except UCB with $\alpha\in\{0.5,1\}$ (canonical only); every cell uses $30$ seeds.}\label{tab:design}
 \centering\small
-\begin{tabular}{@{}lll@{}}
+\begin{tabularx}{\linewidth}{@{}lXl@{}}
 \toprule
 Factor & Values & Purpose\\
 \midrule
 Advertisers $m$ & $\{2,3,5\}$ & competition / non-stationarity\\
 Users $n$ & $\{5,10,20,50\}$ & number of arms\\
 Nominal budget level $\kappa$ & $\{0.1,0.25,0.5,1\}$ & scarce vs.\ moderate budgets\\
-Budget structure & canonical; discounted ($\gamma=0.999$); cumulative (total $0.5\,TB_i$, $\le B_i$ per round) & robustness\\
-Learners & TS; UCB ($\alpha\in\{0.5,1,2\}$); greedy; $\epsilon$-greedy; paced; known-$f$ control & algorithm comparison\\
-Horizon $T$ & $10^3$ (full grid); $10^4$ ($m\in\{2,3\}$, $n\in\{10,20\}$, $\kappa=0.5$) & regret and convergence rate\\
+Budget structure & canonical; discounted ($\gamma=0.999$); cumulative ($0.5\,TB_i$, $\le B_i$/round) & robustness\\
+Learners & TS; UCB ($\alpha\in\{0.5,1,2\}$); greedy; $\epsilon$-greedy; paced; known-$f$ & algorithms\\
+Horizon $T$ & $10^3$ (grid); $10^4$ ($m\in\{2,3\}$, $n\in\{10,20\}$, $\kappa=0.5$) & convergence rate\\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \paragraph{Hypotheses (from the proposal).} \textbf{H1}: Tier-2 regret is sublinear, and TS is competitive
@@ -303,17 +308,18 @@ learning and reduce efficiency.
 % =====================================================================
 \section{Results}\label{sec:results}
 All numbers below are grid means over $30$ seeds per cell, recomputed from the sweep outputs by
-\texttt{report\_numbers.py}; per-cell values with $95\%$ intervals are in the supplementary material
-(\texttt{Doc/report/supplementary.tex}).
+\texttt{report\_numbers.py}; per-cell values with $95\%$ intervals are in
+\texttt{results/sweep\_*/summary.csv}.
 
 \subsection{Tier 1: scarce budgets cost efficiency even at equilibrium}
-Table~\ref{tab:t1} describes the reference profile (per-cell heatmaps are in the supplement). At $\kappa=0.1$ an advertiser
-can afford about one user, so many users go to a lower-value bidder or to nobody: only $32\%$ of users are
+Table~\ref{tab:t1} describes the reference profile. At $\kappa=0.1$ an advertiser
+can afford only about a tenth of the price of buying every user, so many users go to a lower-value bidder
+or to nobody: only $32\%$ of users are
 won by their highest-value advertiser, and $b^\ast$ realises $48\%$ of first-best welfare. Both rise to
 about $73\%$ and $93\%$ once $\kappa\ge0.5$; beyond that, more budget mostly raises prices (revenue grows
-from $24.8$ to $27.6$ per round, while efficiency stays at $0.73$). BRD certifies a pure equilibrium in
+from $24.8$ to $27.6$ per round, while efficiency stays at $0.73$). The Tier-1 solver finds a certified pure equilibrium in
 $90\%$, $85\%$ and $65\%$ of instances for $m=2,3,5$, and in only $0$--$33\%$ for $m=5$, $n\ge20$,
-$\kappa\ge0.25$, where best responses keep undercutting each other. Tier~2 therefore excludes $292$ of
+$\kappa\ge0.25$, where best-response dynamics does not settle within $100$ rounds. Tier~2 therefore excludes $292$ of
 $1440$ seeds ($20\%$); one cell ($m=5$, $n=50$, $\kappa=0.25$) has none left, leaving $47$ Tier-2 cells.
 
 \begin{table}[t]
@@ -342,10 +348,11 @@ $0.67$ at $n=5$ to $0.92$ at $n=50$: without exploration it settles on whichever
 and never revisits the rest, so its regret is close to linear. UCB with $\alpha=2$ over-explores at this
 horizon. Its bonus $\sqrt{2\ln t/N_j}$ is large compared with $f_{ij}\le1$, so it keeps paying
 $c_{-i,j}+1$ for low-value users. Lowering $\alpha$ to $0.5$ cuts its regret by $59\%$, and it then beats
-TS in $4$ of $47$ cells. At $T=10^4$ the exponents separate cleanly: about $0.2$ for TS (close to
-logarithmic), $0.5$--$0.58$ for UCB with $\alpha=2$ ($\sqrt T$-type), $0.8$ for $\epsilon$-greedy (constant
-exploration) and $1.00$ for greedy. UCB's regret per round on these four cells falls from $0.44$--$1.28$ at
-$T=10^3$ to $0.17$--$0.51$ at $T=10^4$, so its gap to TS narrows as $T$ grows.
+TS in $4$ of $47$ cells. At $T=10^4$ the exponents separate cleanly: $0.17$--$0.22$ for TS, $0.5$--$0.58$
+for UCB with $\alpha=2$ ($\sqrt T$-type), $0.80$--$0.84$ for $\epsilon$-greedy (constant exploration) and
+$0.96$--$1.00$ for greedy. UCB's regret per round on these four cells falls from $0.44$--$1.28$ at
+$T=10^3$ to $0.17$--$0.51$ at $T=10^4$, so its absolute gap to TS narrows as $T$ grows, although
+TS's own regret falls faster ($0.03$--$0.08$ per round at $T=10^4$).
 \textbf{H1 holds} for every learner whose exploration decays; it fails for greedy, as expected.
 
 \begin{table}[t]
@@ -387,8 +394,8 @@ the paced curve lies exactly under UCB.}
 \end{figure}
 
 \paragraph{H3: budgets do not slow learning.} Table~\ref{tab:kappa} breaks results down by budget level.
-TS's regret per round is flat in $\kappa$ ($0.45$--$0.53$), and UCB's \emph{grows} with $\kappa$, from $0.81$
-at $\kappa=0.25$ to $3.38$ at $\kappa=1$, because a larger budget lets an optimistic learner buy more
+TS's regret per round is flat in $\kappa$ ($0.45$--$0.53$), and UCB's is largest at $\kappa=1$ ($1.17$, $0.81$, $1.64$, $3.38$
+for $\kappa=0.1,0.25,0.5,1$), plausibly because a larger budget lets an optimistic learner buy more
 exploratory impressions each round. The efficiency loss at small $\kappa$ is already present in $b^\ast$
 (Table~\ref{tab:t1}), and in Tier~3 TS tracks the Tier-1 efficiency within $0.01$--$0.04$ at every $\kappa$.
 \textbf{H3 is not supported as stated}: scarce budgets lower efficiency through the equilibrium, not
@@ -421,10 +428,11 @@ Efficiency & Tier-1 reference $b^\ast$ & $0.32$ & $0.52$ & $0.73$ & $0.73$\\
 Table~\ref{tab:t3} and Figure~\ref{fig:t3} report what happens when every advertiser learns. The final
 equilibrium gap grows with $m$ for every learner except greedy, which is stuck far from equilibrium at
 every $m$, as H2 predicts. The control row shows how much of this is due to learning. Even with known $f$,
-simultaneous best response does not settle on $b^\ast$. It cycles, because each advertiser reacts to bids
-that the others are changing in the same round, and its final gap is $0.76/1.42/2.37$ for $m=2/3/5$. TS ends
-slightly \emph{closer} to equilibrium for $m\le3$ ($0.67/1.25/2.48$): random posterior samples
-desynchronise the advertisers' reactions and damp the cycling. UCB and $\epsilon$-greedy stay $2$--$5$ units
+simultaneous best response does not settle on $b^\ast$. Each advertiser reacts to bids that the others are
+changing in the same round, so play cycles (the control's gap in Figure~\ref{fig:t3}(a) alternates between
+high and low values from round to round); its final gap is $0.76/1.42/2.37$ for $m=2/3/5$. TS ends
+slightly \emph{closer} to equilibrium for $m\le3$ ($0.67/1.25/2.48$), plausibly because random posterior
+samples desynchronise the advertisers' reactions. UCB ($\alpha=2$) and $\epsilon$-greedy stay $2$--$5$ units
 away, and greedy locks into a wrong profile with efficiency $0.29$. With TS the price of learning is small:
 efficiency falls by $0.02$ and revenue by $2.6$ per round, while advertisers' total profit \emph{rises} by
 $0.3$, because concurrent bidding pushes prices down (the control shows the same pattern). Over
@@ -466,8 +474,8 @@ Greedy & $4.79$ & $4.82$ & $4.42$ & $0.29$ & $0.29$ & $9.9$ & $4.5$\\
   {\small (b) Allocation efficiency $\Eff_t$}
 \end{minipage}
 \caption{Tier 3 learning curves for $m=2$, $n=10$, $\kappa=0.5$, canonical budgets; mean and $95\%$ band over
-$30$ seeds. \texttt{oracle\_br} is the known-$f$ control. TS reaches the control's efficiency within about
-$200$ rounds and its gap falls below the control's; greedy freezes after a few rounds.}
+$30$ seeds. \texttt{oracle\_br} is the known-$f$ control. TS reaches the control's efficiency after about
+$400$ rounds, and its gap then stays mostly below the control's oscillating gap; greedy freezes after a few rounds.}
 \label{fig:t3}
 \end{figure}
 
@@ -478,11 +486,11 @@ all $47$ Tier-2 cells and the smallest exponent. Under a \emph{cumulative} campa
 Myopic learners spend as if the budget reset every round. Against the fluid benchmark TS still has the
 lowest mean final regret ($1180$) and wins $26$ of $47$ cells. The paced learner wins $13$ cells and is the
 only one still earning substantially at the end of the campaign: $3.42$ per round over the last $10\%$ of
-rounds, against at most $1.91$ for the myopic learners and $0$ for UCB, which has run out of budget. In Tier~3 the paced agent has the smallest final gap
+rounds, against at most $1.91$ for the myopic learners and $0$ for UCB, which spends its budget too early. In Tier~3 the paced agent has the smallest final gap
 ($2.52/3.21/3.89$ for $m=2/3/5$, against $4.1$--$5.0$ for TS) and the smallest revenue loss ($5.9$ against
 $10.0$--$13.4$). With a single campaign budget, pacing matters more than the choice of bandit index. One
-caveat: the fixed-$b^\ast$ opponents in Tier~2 do not pace either and also run out of budget, so under this
-structure the learner's market is not stationary.
+caveat: the fixed-$b^\ast$ opponents in Tier~2 do not pace either and can run out of budget mid-campaign, so
+under this structure the learner's market is not stationary.
 
 \begin{table}[t]
 \caption{Other budget structures, $T=10^3$, grid means. Discounted: Tier-2 regret exponent. Cumulative
@@ -508,9 +516,8 @@ Budget-paced & $0.59$ & $1378$ & $\mathbf{3.42}$ & $13$ & $\mathbf{2.52/3.21/3.8
 % =====================================================================
 \section{Discussion, limitations and future work}\label{sec:discussion}
 Three findings stand out. \emph{Learning against a fixed market is cheap}: the knapsack oracle does the
-combinatorial work and the bandit index only has to rank users, so posterior sampling reaches near-logarithmic
-regret. \emph{Concurrent adaptation, not learning, is the main obstacle to equilibrium}: known-$f$ best
-response already cycles, and a randomised learner can even damp it. \emph{Budget scarcity acts through the
+combinatorial work and the bandit index only ranks users. \emph{Concurrent adaptation, not learning, is the main
+obstacle to equilibrium}: known-$f$ best response already cycles. \emph{Budget scarcity acts through the
 equilibrium}, not through slower learning.
 
 \paragraph{Deviations from the proposal.} (i)~We use $v=5$ instead of $v=1$ (Section~\ref{sec:model}).
@@ -520,7 +527,11 @@ excluded from Tier~2. (iii)~The cumulative budget is $0.5\,TB_i$ with a per-roun
 necessary but the per-round knapsack is unchanged.
 
 \paragraph{Limitations.} Integer bids force $v=5$, and a finer bid grid could change the equilibria. Tier~2
-rests on fewer seeds in the large-$m$, large-$n$ cells. The learner sees the highest competing bid
+keeps only seeds with a pure $b^\ast$; half of the $292$ it drops come from $m=5$, $n\ge20$, so its
+grid means over-represent markets where best-response dynamics settles. The regret exponent is a mean of
+per-seed slopes and is unstable when $\Reg_{T/10}\approx0$: for UCB ($\alpha=2$) it exceeds $1$ in two cells
+($1.24$ at $m=2$, $n=10$, $\kappa=0.5$; median $1.03$) because some seeds pay almost no regret before
+$t=100$, although mean regret per round falls from a peak of $0.63$ to $0.30$. The learner sees the highest competing bid
 (Assumption~2); with win/loss feedback only it would also have to learn prices. Click rates are synthetic and
 independent across users and advertisers.
 
@@ -530,47 +541,46 @@ winning-price distribution from win/loss outcomes alone, which turns the per-rou
 multiple-choice knapsack.
 
 \paragraph{Code, reproducibility and demo.} Repository:
-\url{https://github.com/VivekRaj2708/FAI-Group22}. \texttt{python run\_tests.py} runs the $54$ tests for all
-tiers, the harness and the demo. \texttt{python run\_evaluation.py sweep \dots} followed by
-\texttt{report} regenerates every figure and per-cell table (exact commands in the README), and
-\texttt{python report\_numbers.py} recomputes every number in this report from the saved sweep summaries.
-\texttt{python run\_demo.py} animates a market round by round with the project's own agents, and
-\texttt{demo/index.html} is a browser version that needs no installation.
+\url{https://github.com/VivekRaj2708/FAI-Group22}. \texttt{python run\_tests.py} runs the $54$ tests;
+\texttt{python run\_evaluation.py sweep \dots} then \texttt{report} regenerates every figure and per-cell table
+(commands in the README); \texttt{python report\_numbers.py} recomputes every number in this report; and
+\texttt{python run\_demo.py} (or \texttt{demo/index.html}) animates a market with the project's own agents.
 
 % =====================================================================
 \section{Contribution}\label{sec:contrib}
-Table~\ref{tab:contrib} lists the tasks assigned to each member in the proposal, what was delivered, and
-whether the task was fulfilled. All four phases were delivered and merged into the shared repository; the
-test suite covers each member's code. Phase~0 (formalisation, instance parameters and the shared agent
-interface) and the review of each other's pull requests were done jointly.
+Table~\ref{tab:contrib} lists each member's assigned task (from the proposal), what they committed (from the Git
+history) and whether the task was fulfilled. The proposal was written jointly; all work was merged through pull requests \#1--\#5.
 
 \begin{table}[h]
-\caption{Assigned tasks (from the proposal) and their status.}\label{tab:contrib}
-\centering\small
-\begin{tabularx}{\linewidth}{@{}p{2.55cm}XXp{1.6cm}@{}}
+\caption{Assigned tasks (from the proposal), delivered code (from the commit history) and status.}\label{tab:contrib}
+\centering\footnotesize
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.1cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{1.45cm}@{}}
 \toprule
-Member & Assigned task & Delivered (code) & Status\\
+Member & Assigned task & Delivered (commits) & Status\\
 \midrule
-Vivek Raj & Tier-1 known-$f$ baseline: knapsack DP best response, equilibrium computation (BRD,
-fictitious play, support enumeration), reference $b^\ast$ and $p^\ast$ &
-\texttt{src/tier1/} (knapsack DP, BRD, fictitious play, exhaustive pure-profile search, social planner),
-\texttt{src/env/}, \texttt{run\_tier1.py}, Tier-1 tests & Fulfilled (deviation~(ii))\\
+Vivek Raj & Tier-1 known-$f$ baseline: knapsack DP best response, equilibrium computation, reference
+$b^\ast$ and $p^\ast$ &
+Auction engine and instance generator (\texttt{src/env/}); knapsack DP, best-response dynamics, fictitious
+play, exhaustive pure-profile search and social planner (\texttt{src/tier1/}); \texttt{run\_tier1.py}; Tier-1
+tests; proposal source and project setup & Fulfilled\\
 Anvit Aggarwal & Tier-2 learners (UCB, TS, greedy baselines) with regret evaluation, and the budget-paced
-variant for cumulative budgets & \texttt{src/tier2/} (UCB, TS, greedy, $\epsilon$-greedy, dual-paced agent,
-simulation), \texttt{run\_tier2.py}, Tier-2 tests & Fulfilled\\
+variant for cumulative budgets & Shared agent interface (\texttt{src/agents/base.py}); UCB, TS, greedy,
+$\epsilon$-greedy and dual-paced learners and the single-learner simulation (\texttt{src/tier2/});
+\texttt{run\_tier2.py}; Tier-2 tests & Fulfilled\\
 Eshaan Ashish Jaiswal & Tier-3 simulator with all advertisers learning; convergence data as $m$ and $n$ vary &
-\texttt{src/tier3/} (multi-agent simulator, convergence-rate and cycling analysis, price of learning),
-\texttt{run\_tier3.py}, Tier-3 tests & Fulfilled\\
+Multi-agent simulator, convergence-rate and cycling analysis, price of learning (\texttt{src/tier3/});
+Tier-1 knapsack and equilibrium agents; \texttt{run\_tier3.py}, \texttt{collect\_convergence\_logs.py},
+test runner \texttt{run\_tests.py}; Tier-3 tests & Fulfilled\\
 Gella Naga Sai Krishna & Shared evaluation harness (metrics, plots); sensitivity study over round structures
-and budget levels; final report and presentation & \texttt{src/eval/}, \texttt{run\_evaluation.py}, all
-sweeps in \texttt{results/}, \texttt{report\_numbers.py}, live demo, this report, supplement and slides &
-Fulfilled\\
+and budget levels; final report & Evaluation harness (\texttt{src/eval/},
+\texttt{run\_evaluation.py}), agent registry; all sweeps in \texttt{results/}; \texttt{report\_numbers.py};
+live demo; this report and README & Fulfilled\\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 % =====================================================================
-\small
+\footnotesize
 \begin{thebibliography}{99}
 \setlength{\itemsep}{0pt}
 \bibitem{kellerer2004knapsack} H.~Kellerer, U.~Pferschy, and D.~Pisinger. \emph{Knapsack Problems}. Springer, 2004.

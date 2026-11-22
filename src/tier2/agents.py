@@ -9,7 +9,7 @@ from src.tier1.knapsack import solve_knapsack_dp
 
 class UCBAgent(BaseAdvertiserAgent):
     """
-    Budget-aware Optimistic (UCB) Bidding Agent (Algorithm 1 in main.tex).
+    Budget-aware Optimistic (UCB) Bidding Agent (Algorithm 1 in the proposal).
     Operates as a combinatorial semi-bandit learner under a knapsack constraint.
     """
 
@@ -427,7 +427,7 @@ class EpsGreedyAgent(BaseAdvertiserAgent):
 
 class CumulativeBudgetPacedAgent(BaseAdvertiserAgent):
     """
-    Cumulative Budget Paced Bidding Agent (Remark 1, item 2 in main.tex).
+    Cumulative Budget Paced Bidding Agent (Remark 1, item 2 in the proposal).
     Designed for the Bandits with Knapsacks (BwK) setting where a single total budget
     is depleted across T rounds without replenishment.
     Employs adaptive dual Lagrangian pacing to pace spending across remaining rounds.

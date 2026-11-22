@@ -6,7 +6,7 @@ import numpy as np
 class BaseAdvertiserAgent(ABC):
     """
     Abstract base class for all bidding agents.
-    Complies with the standard interface defined in Section 4 of Agents.md.
+    Standard interface (get_bid / observe / reset) shared by every agent.
     """
 
     def __init__(

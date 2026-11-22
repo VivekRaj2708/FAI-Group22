@@ -2,12 +2,12 @@
 Experiment runner: one configuration x many seeds, with Tier-1 reference
 values, per-seed summaries and across-seed curves with 95% CIs.
 
-Scenarios (main.tex Section 3):
+Scenarios (proposal Section 4):
 * ``tier1``  - every advertiser plays its Tier-1 reference bids b* (sanity
                check: regret = equilibrium gap of b*, distance = 0).
 * ``tier2``  - advertiser ``focal_agent`` runs ``learner``; all others play
                their fixed Tier-1 bids. Instances whose Tier-1 profile is not
-               a pure equilibrium are excluded (main.tex Section 3.2).
+               a pure equilibrium are excluded (proposal Section 4.2).
 * ``tier3``  - every advertiser runs ``learner`` concurrently.
 * ``custom`` - ``agents`` lists one registry name per advertiser.
 """

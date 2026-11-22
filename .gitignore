@@ -15,10 +15,8 @@ results/sweep_discounted/per_seed.csv
 *.fdb_latexmk
 *.synctex.gz
 
-# Compiled report PDFs (regenerable via pdflatex; figures in figures/ remain tracked)
-Doc/report/*.pdf
-!Doc/report/figures/*.pdf
-!Doc/report/final_report.pdf
+# Figures and tables written by `run_evaluation.py report` (regenerable)
+results/report_assets/
 
 # Example outputs of run_tier1/2/3.py and run_demo.py (regenerable; not used by the report)
 /tier*_benchmark*.json

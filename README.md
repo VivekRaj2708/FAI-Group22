@@ -5,13 +5,19 @@ CS329 Foundations of AI, Group 22, IIT Gandhinagar. Vivek Raj, Anvit Aggarwal, E
 
 Repository: <https://github.com/VivekRaj2708/FAI-Group22>
 
-| Deliverable | Where |
+| Document | Link |
 |---|---|
-| **Final report (8 pages, PDF)** | [`Doc/report/final_report.pdf`](Doc/report/final_report.pdf) (source: [`final_report.tex`](Doc/report/final_report.tex)) |
-| Supplementary material (every per-cell table and figure, 95% CIs) | [`Doc/report/supplementary.tex`](Doc/report/supplementary.tex) |
-| Slides | [`Doc/presentation/slides.tex`](Doc/presentation/slides.tex) |
-| Live demo | `python run_demo.py`, or open [`demo/index.html`](demo/index.html) in a browser |
-| Submitted proposal and TA review | [`proposal/`](proposal/) (LaTeX source: [`Doc/main.tex`](Doc/main.tex)) |
+| **Final report (8 pages, PDF)** | [report/final_report.pdf](https://github.com/VivekRaj2708/FAI-Group22/blob/main/report/final_report.pdf) (LaTeX source: [report/final_report.tex](report/final_report.tex)) |
+| **Project proposal (PDF)** | [proposal/project_proposal.pdf](https://github.com/VivekRaj2708/FAI-Group22/blob/main/proposal/project_proposal.pdf) (LaTeX source: [proposal/project_proposal.tex](proposal/project_proposal.tex)) |
+| TA review of the proposal | [shown below](#ta-review-of-the-proposal) ([image](proposal/TA_review.png)) |
+| Per-cell results (every cell, mean and 95% CI) | [results/](results/) (`sweep_*/summary.csv`) |
+| Live demo | `python run_demo.py`, or open [demo/index.html](demo/index.html) in a browser |
+
+### TA review of the proposal
+
+![TA review of the project proposal](proposal/TA_review.png)
+
+As the review suggested, the final report keeps future work to one short paragraph and focuses on the three tiers.
 
 ---
 
@@ -49,6 +55,7 @@ pip install -r requirements.txt
 
 python run_tests.py         # 54 tests: Tier 1, Tier 2, Tier 3, evaluation harness, demo
 python report_numbers.py    # recomputes every number in the final report (see Section 4)
+python check_tie_deviations.py   # checks the Tier-1 profiles against tie-bid deviations (about 10 s)
 python run_demo.py          # live, animated market using the real agents
 ```
 
@@ -60,7 +67,7 @@ python run_tier1.py --m 2 --n 4 --kappa 0.5 --v 5.0 --output tier1_benchmark.jso
 
 # Tier 2: all learners against fixed b* opponents, regret curves
 python run_tier2.py --rounds 200 --trials 5 --plot tier2_regret_curves.png --output tier2_benchmark.json
-python run_tier2.py --learners paced --round-structure cumulative --rounds 200
+python run_tier2.py --round-structure cumulative --rounds 200     # campaign budget; includes the paced learner
 
 # Tier 3: every advertiser learns (populations: all_ucb, all_ts, mixed_ucb_ts, mixed_all, learner_vs_equilibrium)
 python run_tier3.py --m 2 --n 4 --population all_ts --rounds 300 --trials 5 --plot tier3_convergence_plots.png
@@ -87,8 +94,9 @@ python run_demo.py --headless --T 200                     # text log only, no wi
 
 ## 3. Results
 
-Every result uses 30 seeds per cell over `m ∈ {2,3,5}`, `n ∈ {5,10,20,50}` and budget level `κ ∈ {0.1,0.25,0.5,1}`
-(48 cells), with `f_ij ~ Beta(2,5)` and click value `v = 5`. Shaded bands in the figures are 95% confidence intervals.
+At T = 1000, results use 30 seeds per cell over `m ∈ {2,3,5}`, `n ∈ {5,10,20,50}` and budget level
+`κ ∈ {0.1,0.25,0.5,1}` (48 cells); the T = 10⁴ study uses 4 of these cells. Click probabilities are
+`f_ij ~ Beta(2,5)` and the click value is `v = 5`. Shaded bands in the figures are 95% confidence intervals.
 
 **Tier 2: one learner, horizon T = 1000** (means over the 47 cells that have a pure equilibrium)
 
@@ -100,7 +108,7 @@ Every result uses 30 seeds per cell over `m ∈ {2,3,5}`, `n ∈ {5,10,20,50}` a
 | ε-greedy (ε = 0.1) | 1.22 | 0.66 / 0.80–0.84 | 0 |
 | Greedy | 2.95 | 0.79 / 0.96–1.00 | 0 |
 
-A regret exponent of 1 means linear regret, 0.5 means √T-type, and a value near 0 means close to logarithmic.
+The regret exponent is the fitted slope of log regret against log t: 1 means linear regret, 0.5 means √T-type, and smaller values mean slower growth. It is an empirical fit, not a proven rate.
 
 **Tier 3: all advertisers learn** (canonical budgets, T = 1000)
 
@@ -113,41 +121,42 @@ A regret exponent of 1 means linear regret, 0.5 means √T-type, and a value nea
 
 **Findings**
 - **H1 holds.** Regret is sublinear for every learner whose exploration decays. Thompson sampling is best in all 47 cells; greedy's regret is close to linear.
-- **H2 holds.** The gap to equilibrium grows with `m`. Most of the gap is already present with known `f`, because simultaneous best responses cycle.
+- **H2 holds.** The gap to equilibrium grows with `m`. With Thompson sampling, nearly all of the gap is already present with known `f`, because simultaneous best responses cycle.
 - **H3 is not supported.** Scarce budgets lower efficiency through the equilibrium itself, not by slowing learning.
 - **Cumulative (campaign) budgets:** the budget-paced learner is the only one still earning at the end of the campaign, and it has the smallest Tier-3 gap.
+- **Caveat on `b*`:** the reference profile is an equilibrium only for deviations that bid `c + 1` or `0` on each user, the same bids our learners use. If a deviation may also tie a rival's bid, some advertiser can gain in 62% of the profiles (median gain 8% of its profit), mostly at larger budgets. `python check_tie_deviations.py` reproduces this.
 
 ### Screenshots
 
 **Tier 1: efficiency of the reference equilibrium.** Scarce budgets cost efficiency even when `f` is known.
 
-![Tier-1 efficiency heatmap](docs/screenshots/tier1_efficiency_heatmap.png)
+![Tier-1 efficiency heatmap](report/figures/tier1_efficiency_heatmap.png)
 
 **Tier 2: cumulative regret** (m = 2, n = 10, κ = 0.5), T = 1000 (left) and T = 10⁴ (right).
 
 <p>
-<img src="docs/screenshots/tier2_cum_regret_T1000.png" width="49%" alt="Tier-2 cumulative regret, T=1000">
-<img src="docs/screenshots/tier2_cum_regret_T10000.png" width="49%" alt="Tier-2 cumulative regret, T=10000">
+<img src="report/figures/tier2_cum_regret_T1000.png" width="49%" alt="Tier-2 cumulative regret, T=1000">
+<img src="report/figures/tier2_cum_regret_T10000.png" width="49%" alt="Tier-2 cumulative regret, T=10000">
 </p>
 
 **Tier 2: Thompson sampling final regret in every (m, n, κ) cell.**
 
-![Thompson sampling regret heatmap](docs/screenshots/tier2_thompson_regret_heatmap.png)
+![Thompson sampling regret heatmap](report/figures/tier2_thompson_regret_heatmap.png)
 
 **Tier 3: equilibrium gap and allocation efficiency** (m = 2, n = 10, κ = 0.5).
 
 <p>
-<img src="docs/screenshots/tier3_equilibrium_gap.png" width="49%" alt="Tier-3 equilibrium gap">
-<img src="docs/screenshots/tier3_efficiency.png" width="49%" alt="Tier-3 allocation efficiency">
+<img src="report/figures/tier3_equilibrium_gap.png" width="49%" alt="Tier-3 equilibrium gap">
+<img src="report/figures/tier3_efficiency.png" width="49%" alt="Tier-3 allocation efficiency">
 </p>
 
 **Tier 3 over T = 10⁴:** the gap keeps shrinking for Thompson sampling and UCB, but not for greedy.
 
-![Tier-3 equilibrium gap, T=10^4](docs/screenshots/tier3_equilibrium_gap_T10000.png)
+![Tier-3 equilibrium gap, T=10^4](report/figures/tier3_equilibrium_gap_T10000.png)
 
 **Live demo:** bids, wins, clicks, learned vs. true click rates, regret, gap and efficiency.
 
-![Live demo](docs/screenshots/live_demo.png)
+![Live demo](report/figures/live_demo.png)
 
 ---
 
@@ -157,10 +166,10 @@ The sweep outputs behind the report are committed in `results/sweep_*/` (`summar
 
 ```bash
 python report_numbers.py                 # every table and in-text number of the final report
-python report_numbers.py --section t2    # one section: t1 | t2 | t3 | rob
+python report_numbers.py --section t2    # one section: t1 | t2 | t3 | rob | lim
 ```
 
-To rerun the sweeps from scratch, then rebuild the figures and per-cell tables used by the report:
+To rerun the sweeps from scratch and rebuild the figures (the four used in the report are in `report/figures/`, with the same file names):
 
 ```bash
 python run_evaluation.py sweep --preset tier1 --T 1000 --out results/sweep_tier1
@@ -173,11 +182,11 @@ python run_evaluation.py sweep --preset paper --T 1000 --structures canonical \
 python run_evaluation.py sweep --preset paper --T 10000 --m 2 3 --n 10 20 --kappa 0.5 --structures canonical \
     --learners ucb ucb_a05 thompson greedy eps_greedy --scenarios tier2 tier3 --out results/sweep_horizon
 python run_evaluation.py report --sweep-dir results/sweep_tier1 results/sweep_learners \
-    results/sweep_discounted results/sweep_ucb_alpha results/sweep_horizon --report-dir Doc/report
+    results/sweep_discounted results/sweep_ucb_alpha results/sweep_horizon --report-dir results/report_assets
 ```
 
 The full learner sweep takes about 20 minutes on 14 cores; add `--workers N` to set the number of parallel processes.
-To compile the report, run `pdflatex final_report` twice from `Doc/report/`, or upload `Doc/` to Overleaf.
+To compile the report, run `pdflatex final_report` twice inside `report/`, or upload the `report/` folder to Overleaf.
 
 ---
 
@@ -193,24 +202,26 @@ src/
   eval/       evaluation harness: metrics, 95% CIs, parameter sweeps, plots, LaTeX tables
 tests/        test suites for every tier, the harness and the demo
 results/      committed sweep summaries used by the report
-Doc/report/   final_report.tex/.pdf, supplementary.tex, figures/, generated/ tables
-Doc/presentation/  slides
+report/       final_report.pdf, final_report.tex, arxiv.sty
+report/figures/  the report's 4 figures (PDF) and the README screenshots (PNG)
+proposal/     submitted proposal (PDF and LaTeX source) and the TA's review
 demo/         browser demo
-docs/screenshots/  figures shown in this README
 run_tier1.py, run_tier2.py, run_tier3.py, run_evaluation.py, run_demo.py, run_tests.py, report_numbers.py
+check_tie_deviations.py       # exact best response including tie bids, applied to every Tier-1 profile
 collect_convergence_logs.py   batch collection of Tier-3 convergence logs
-Agents.md                     architecture and agent specifications
 ```
 
 ---
 
 ## 6. Team and contributions
 
-| Member | Assigned task | Status |
-|---|---|---|
-| Vivek Raj | Tier 1: knapsack best response, equilibrium computation, reference `b*` | Fulfilled |
-| Anvit Aggarwal | Tier 2: UCB, Thompson sampling, greedy baselines, budget-paced learner, regret evaluation | Fulfilled |
-| Eshaan Ashish Jaiswal | Tier 3: multi-agent simulator and convergence data | Fulfilled |
-| Gella Naga Sai Krishna | Evaluation harness, sensitivity study, report, slides, demo | Fulfilled |
+Assigned tasks are from the proposal; the delivered work is taken from the Git commit history.
 
-Section 6 of the report gives the details.
+| Member | Assigned task | Delivered (commits) | Status |
+|---|---|---|---|
+| Vivek Raj | Tier 1: knapsack best response, equilibrium computation, reference `b*` | Auction engine and instance generator (`src/env/`); knapsack DP, best-response dynamics, fictitious play, exhaustive pure-profile search, social planner (`src/tier1/`); `run_tier1.py`; Tier-1 tests; proposal source and project setup | Fulfilled |
+| Anvit Aggarwal | Tier 2: UCB, Thompson sampling, greedy baselines, budget-paced learner, regret evaluation | Shared agent interface (`src/agents/base.py`); UCB, Thompson sampling, greedy, ε-greedy and dual-paced learners and the single-learner simulation (`src/tier2/`); `run_tier2.py`; Tier-2 tests | Fulfilled |
+| Eshaan Ashish Jaiswal | Tier 3: multi-agent simulator and convergence data as `m` and `n` vary | Multi-agent simulator, convergence-rate and cycling analysis, price of learning (`src/tier3/`); Tier-1 knapsack and equilibrium agents; `run_tier3.py`, `collect_convergence_logs.py`, test runner `run_tests.py`; Tier-3 tests | Fulfilled |
+| Gella Naga Sai Krishna | Evaluation harness, sensitivity study, final report | Evaluation harness (`src/eval/`, `run_evaluation.py`) and agent registry; all sweeps in `results/`; `report_numbers.py`; live demo (`run_demo.py`, `demo/`); final report, README | Fulfilled |
+
+The proposal was written jointly, and all work was merged into `main` through pull requests #1–#5. Section 6 of the report has the same table.

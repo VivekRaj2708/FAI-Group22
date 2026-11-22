@@ -2,7 +2,7 @@
 Repeated batched first-price auction simulator.
 
 Runs any list of ``BaseAdvertiserAgent`` for T rounds on an ``AuctionInstance``
-under one of the three round structures of main.tex Remark 1:
+under one of the three round structures of proposal Remark 1:
 
 * ``canonical``  - per-round budget B_i resets every round.
 * ``discounted`` - canonical constraint; round-t quantities are weighted by

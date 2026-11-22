@@ -1,6 +1,6 @@
 """
 Sensitivity sweep over (m, n, kappa) x round structure x scenario/learner
-(main.tex Table 2), parallelised over instances.
+(proposal Table 2), parallelised over instances.
 
 One job = one synthetic instance (m, n, kappa, seed); the Tier-1 reference
 is solved once per job and re-used by every scenario/learner/structure on that
@@ -85,7 +85,7 @@ PRESETS: Dict[str, SweepSpec] = {
                        horizon=200, num_seeds=3),
     # Full (m, n, kappa) grid for the full-information tiers (available now).
     "tier1": SweepSpec(runs=[("tier1", "-"), ("tier3", "oracle_br")], horizon=300, num_seeds=30),
-    # Full study (main.tex Table 2) once Tier-2/3 learners are registered.
+    # Full study (proposal Table 2) once Tier-2/3 learners are registered.
     "paper": SweepSpec(runs=[("tier1", "-")]
                        + [("tier2", l) for l in ("ucb", "thompson", "greedy", "eps_greedy")]
                        + [("tier3", l) for l in ("ucb", "thompson")],

@@ -3,10 +3,11 @@
     python report_numbers.py            # prints all tables / in-text numbers
     python report_numbers.py --section t2
 
-Each block below is labelled with the table or paragraph of Doc/report/final_report.tex it feeds.
+Each block below is labelled with the table or paragraph of report/final_report.tex it feeds.
 Inputs are the per-cell summaries written by `run_evaluation.py sweep` (results/sweep_*/summary.csv,
 one row per (scenario, learner, round structure, m, n, kappa), already averaged over 30 seeds).
-Nothing here simulates; it only aggregates, so the report can be checked against the code's output.
+Everything except the last block only aggregates. The "lim" block (Limitations paragraph) re-runs one
+Tier-2 cell (30 seeds, about 5 s), because the per-seed slopes and per-round curves it needs are not saved.
 """
 import argparse
 import os
@@ -149,7 +150,29 @@ def robustness(d):
     print(out.to_string())
 
 
-SECTIONS = {"t1": tier1, "t2": tier2, "t3": tier3, "rob": robustness}
+def limitations(d):
+    hdr("Limitations: where the excluded Tier-2 seeds are (no pure equilibrium)")
+    x = sel(d, "tier2", "thompson")
+    dropped = x.n_excluded.sum()
+    big = x.query("m == 5 and n >= 20").n_excluded.sum()
+    print(f"excluded {dropped} seeds; {big} ({big / dropped:.0%}) of them in m=5, n>=20")
+
+    hdr("Limitations: UCB (alpha=2) regret exponent above 1 (re-runs one cell, ~5 s)")
+    x = sel(d, "tier2", "ucb")
+    print("cells with exponent > 1:", x.query("regret_slope > 1")[["m", "n", "kappa", "regret_slope"]]
+          .round(2).to_dict("records"))
+    import numpy as np
+    from src.eval.experiment import ExperimentConfig, run_seed
+    cfg = ExperimentConfig(m=2, n=10, kappa=0.5, scenario="tier2", learner="ucb", horizon=1000)
+    runs = [r for r in (run_seed(cfg, s, keep_trace=True) for s in cfg.seeds) if not r.summary["excluded"]]
+    slopes = np.array([r.summary["regret_slope"] for r in runs])
+    windows = np.mean([r.trace.regret[:, 0].reshape(10, 100).mean(axis=1) for r in runs], axis=0)
+    print(f"m=2, n=10, kappa=0.5: {len(runs)} seeds, mean exponent {slopes.mean():.2f}, "
+          f"median {np.median(slopes):.2f}, seeds > 1: {(slopes > 1).sum()}")
+    print("mean regret per round in each 100-round window:", windows.round(2).tolist())
+
+
+SECTIONS = {"t1": tier1, "t2": tier2, "t3": tier3, "rob": robustness, "lim": limitations}
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -157,5 +180,5 @@ if __name__ == "__main__":
     args = ap.parse_args()
     pd.set_option("display.width", 200)
     data = load()
-    for name in (args.section or ["t1", "t2", "t3", "rob"]):
+    for name in (args.section or ["t1", "t2", "t3", "rob", "lim"]):
         SECTIONS[name](data)

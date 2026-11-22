@@ -1,5 +1,5 @@
 """
-Profile-level evaluation metrics (Agents.md Section 5, main.tex Section 2.6).
+Profile-level evaluation metrics (proposal Section 3.7).
 
 All quantities are computed from the *true* click probabilities f, which the
 evaluator knows but learners never see. Vectorised with numpy so they can be

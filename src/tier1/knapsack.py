@@ -71,7 +71,7 @@ def compute_best_response_knapsack(
 ) -> KnapsackResult:
     """
     Computes advertiser a_i's best response against fixed competing bids c_{-i}
-    under strict-win bidding (Eq. (1) in main.tex).
+    under strict-win bidding (Eq. (1) in the proposal).
 
     To win user u_j with probability 1, the advertiser bids b_{ij} = c_{-i, j} + 1.
     Cost: w_j = c_{-i, j} + 1

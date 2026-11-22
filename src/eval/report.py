@@ -3,7 +3,7 @@ Turns a sweep directory into report assets:
 
     <report_dir>/figures/*.pdf          - figures
     <report_dir>/generated/*.tex        - booktabs tables
-    <report_dir>/generated/manifest.tex - \\input by Doc/report/supplementary.tex
+    <report_dir>/generated/manifest.tex - LaTeX file that inputs every generated table and figure
 
 Everything is regenerated from ``aggregates.json``, so re-running the sweep
 (e.g. after Tier-2/3 learners are registered) refreshes the report.
