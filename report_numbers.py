@@ -157,6 +157,22 @@ def limitations(d):
     big = x.query("m == 5 and n >= 20").n_excluded.sum()
     print(f"excluded {dropped} seeds; {big} ({big / dropped:.0%}) of them in m=5, n>=20")
 
+    hdr("Limitations: Tier 2 on all 1440 seeds, including those without a pure equilibrium")
+    # results/sweep_all_seeds was run with --include-mixed: on non-pure seeds the opponents play the
+    # final best-response-dynamics profile. Regret is against the best response to those fixed bids.
+    ps = pd.read_csv(os.path.join(ROOT, "results", "sweep_all_seeds", "per_seed.csv"))
+    ps = ps[(ps.scenario == "tier2") & ps.learner.isin(HEAD2HEAD)]
+    ps["is_pure"] = ps.is_pure.astype(str).str.lower() == "true"
+    for name, part in (("all seeds", ps), ("non-pure seeds only", ps[~ps.is_pure])):
+        n_seeds = part[part.learner == "thompson"].shape[0]
+        cells = part.pivot_table(index=["m", "n", "kappa"], columns="learner", values="final_regret")
+        wins = cells[HEAD2HEAD].idxmin(axis=1).value_counts().to_dict()
+        rpr = part.groupby("learner").avg_regret_per_round.mean().round(2).to_dict()
+        slope = part.groupby("learner").regret_slope.mean().round(2).to_dict()
+        print(f"{name}: {n_seeds} seeds in {len(cells)} cells; cell wins {wins}")
+        print(f"  regret per round {rpr}")
+        print(f"  regret exponent  {slope}")
+
     hdr("Limitations: UCB (alpha=2) regret exponent above 1 (re-runs one cell, ~5 s)")
     x = sel(d, "tier2", "ucb")
     print("cells with exponent > 1:", x.query("regret_slope > 1")[["m", "n", "kappa", "regret_slope"]]

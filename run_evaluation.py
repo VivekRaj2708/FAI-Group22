@@ -69,6 +69,8 @@ def cmd_sweep(a):
             setattr(spec, field, val)
     if a.no_exact:
         spec.prefer_exact = False
+    if a.include_mixed:
+        spec.include_mixed = True
     missing = sorted({l for sc, l in spec.runs if sc != "tier1"} - set(available_agents()))
     if missing:
         sys.exit(f"Agents not registered yet: {missing}. Available: {available_agents()}")
@@ -119,6 +121,8 @@ def main(argv=None):
     s.add_argument("--seeds", type=int)
     s.add_argument("--v", type=float)
     s.add_argument("--no-exact", action="store_true")
+    s.add_argument("--include-mixed", action="store_true",
+                   help="tier2: keep seeds without a certified pure equilibrium (opponents play the final BRD profile)")
     s.add_argument("--workers", type=int, default=None)
     s.add_argument("--out", default="results/sweep")
     s.set_defaults(fn=cmd_sweep)

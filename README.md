@@ -108,6 +108,8 @@ At T = 1000, results use 30 seeds per cell over `m ∈ {2,3,5}`, `n ∈ {5,10,20
 | ε-greedy (ε = 0.1) | 1.22 | 0.66 / 0.80–0.84 | 0 |
 | Greedy | 2.95 | 0.79 / 0.96–1.00 | 0 |
 
+The 292 seeds without a pure equilibrium (mostly `m = 5`, `n ≥ 20`) are left out of this table. Keeping them, with the opponents fixed at the last best-response-dynamics profile, does not change the ranking: Thompson sampling has the lowest regret in all 48 cells, and in 21 of 22 cells on the dropped seeds alone (`results/sweep_all_seeds/`, `python report_numbers.py --section lim`).
+
 The regret exponent is the fitted slope of log regret against log t: 1 means linear regret, 0.5 means √T-type, and smaller values mean slower growth. It is an empirical fit, not a proven rate.
 
 **Tier 3: all advertisers learn** (canonical budgets, T = 1000)
@@ -181,6 +183,8 @@ python run_evaluation.py sweep --preset paper --T 1000 --structures canonical \
     --learners ucb_a05 ucb_a1 --scenarios tier2 tier3 --out results/sweep_ucb_alpha
 python run_evaluation.py sweep --preset paper --T 10000 --m 2 3 --n 10 20 --kappa 0.5 --structures canonical \
     --learners ucb ucb_a05 thompson greedy eps_greedy --scenarios tier2 tier3 --out results/sweep_horizon
+python run_evaluation.py sweep --preset paper --T 1000 --structures canonical --include-mixed \
+    --learners ucb thompson greedy eps_greedy --scenarios tier2 --out results/sweep_all_seeds
 python run_evaluation.py report --sweep-dir results/sweep_tier1 results/sweep_learners \
     results/sweep_discounted results/sweep_ucb_alpha results/sweep_horizon --report-dir results/report_assets
 ```

@@ -527,8 +527,10 @@ excluded from Tier~2. (iii)~The cumulative budget is $0.5\,TB_i$ with a per-roun
 necessary but the per-round knapsack is unchanged.
 
 \paragraph{Limitations.} Integer bids force $v=5$, and a finer bid grid could change the equilibria. Tier~2
-keeps only seeds with a pure $b^\ast$; half of the $292$ it drops come from $m=5$, $n\ge20$, so its
-grid means over-represent markets where best-response dynamics settles. The regret exponent is a mean of
+keeps only seeds with a pure $b^\ast$; half of the $292$ it drops come from $m=5$, $n\ge20$. Rerunning it on
+all $1440$ seeds, with opponents fixed at the last BRD profile where no pure equilibrium exists, leaves the
+ranking unchanged: TS has the lowest regret in all $48$ cells, and on the dropped seeds alone in $21$ of
+$22$ cells ($0.88$ regret per round against $3.31$ for UCB). The regret exponent is a mean of
 per-seed slopes and is unstable when $\Reg_{T/10}\approx0$: for UCB ($\alpha=2$) it exceeds $1$ in two cells
 ($1.24$ at $m=2$, $n=10$, $\kappa=0.5$; median $1.03$) because some seeds pay almost no regret before
 $t=100$, although mean regret per round falls from a peak of $0.63$ to $0.30$. The learner sees the highest competing bid

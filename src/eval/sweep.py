@@ -41,6 +41,9 @@ class SweepSpec:
     prefer_exact: bool = True
     # tier1 (fixed b*) is a static profile; evaluating it under every structure is redundant.
     tier1_canonical_only: bool = True
+    # Tier 2 normally drops seeds whose Tier-1 profile is not a certified pure equilibrium.
+    # True keeps them: the learner then faces the opponents' final best-response-dynamics profile.
+    include_mixed: bool = False
 
     @property
     def seeds(self) -> List[int]:
@@ -58,6 +61,7 @@ class SweepSpec:
                     learner_kwargs=self.learner_kwargs.get(learner, {}), horizon=self.horizon,
                     round_structure=rs, gamma=self.gamma, cumulative_rho=self.cumulative_rho,
                     seeds=self.seeds, prefer_exact=self.prefer_exact,
+                    exclude_mixed=False if self.include_mixed else None,
                 ))
         return out
 
