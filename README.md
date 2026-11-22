@@ -1,429 +1,216 @@
-# FAI-Group22: Learning to Bid Under a Budget
+# Learning to Bid Under a Budget
 
-**Project Title:** Learning to Bid Under a Budget: A Batched First-Price Ad Auction with Unknown Click Probabilities  
-**Authors:** Vivek Raj, Anvit Aggarwal, Eshaan Ashish Jaiswal, Gella Naga Sai Krishna  
-**Course:** Foundations of Artificial Intelligence (FAI)
+**A batched first-price ad auction with unknown click probabilities.**
+CS329 Foundations of AI, Group 22, IIT Gandhinagar. Vivek Raj, Anvit Aggarwal, Eshaan Ashish Jaiswal, Gella Naga Sai Krishna.
 
----
+Repository: <https://github.com/VivekRaj2708/FAI-Group22>
 
-## 1. System Overview & Architecture
-
-This repository implements a repeated batched first-price ad auction environment where budget-constrained advertisers compete to display ads to $n$ users with unknown click probabilities $f_{ij} = f(u_j, a_i) \in [0, 1]$:
-
-```
-                      ┌────────────────────────────────────────┐
-                      │          Auction Platform              │
-                      │  - Resolves highest bids per user      │
-                      │  - Charges winners their exact bid     │
-                      │  - Simulates clicks: X ~ Ber(f_ij)     │
-                      └────▲──────────────────────────────┬─────┘
-                           │                              │
-         Submits Bid Vector│                              │ Feedback:
-        b_i = (b_i1,..,b_in│                              │ {w_ij, X_ij, b_ij, c_{-i,j}}
-       s.t. sum(b_ij) <= B_│                              │
-                           │                              ▼
-                   ┌───────┴────────┐            ┌─────────────────┐
-                   │ Advertiser a_1 │    ...     │ Advertiser a_m  │
-                   │ (Learner/Equil)│            │ (Learner/Equil) │
-                   └────────────────┘            └─────────────────┘
-```
-
-The experimental study is organized across three tiers:
-1. **Tier 1 (Full Information Baseline & Equilibrium):** Exact 0-1 knapsack best-response dynamic programming, pure/approximate Nash equilibria ($b^*$), and social planner welfare ceiling.
-2. **Tier 2 (Single-Agent Combinatorial Semi-Bandit):** Single budget-aware bandit learners (Optimistic UCB, Thompson Sampling, Greedy, $\epsilon$-Greedy, Cumulative Budget Paced) competing against stationary opponents playing Tier-1 equilibrium strategies.
-3. **Tier 3 (Multi-Agent Concurrent Learning & Non-Stationary Convergence - Phase 3):** All $m$ advertisers learn and bid concurrently. Evaluates exploitability gap $\varepsilon_t$, distance to equilibrium $\|b^t - b^*\|_1$, per-agent regret, market efficiency, stability/cycling, and the Price of Learning.
+| Deliverable | Where |
+|---|---|
+| **Final report (8 pages, PDF)** | [`Doc/report/final_report.pdf`](Doc/report/final_report.pdf) (source: [`final_report.tex`](Doc/report/final_report.tex)) |
+| Supplementary material (every per-cell table and figure, 95% CIs) | [`Doc/report/supplementary.tex`](Doc/report/supplementary.tex) |
+| Slides | [`Doc/presentation/slides.tex`](Doc/presentation/slides.tex) |
+| Live demo | `python run_demo.py`, or open [`demo/index.html`](demo/index.html) in a browser |
+| Submitted proposal and TA review | [`proposal/`](proposal/) (LaTeX source: [`Doc/main.tex`](Doc/main.tex)) |
 
 ---
 
-## Final report and quick start
+## 1. The problem
 
-- **Final report (8 pages):** [`Doc/report/final_report.tex`](Doc/report/final_report.tex). It extends the
-  project-review submission ([`Doc/main.tex`](Doc/main.tex)) with Methodology, Results and Contribution sections.
-  Compile with `pdflatex final_report` (twice) from `Doc/report/`, or upload `Doc/` to Overleaf; `arxiv.sty` is included.
-- **Per-cell tables with 95% CIs:** [`Doc/report/supplementary.tex`](Doc/report/supplementary.tex).
+`m` advertisers compete for a fixed set of `n` users over `T` rounds. In each round every advertiser submits
+**one integer bid per user**, with the bids summing to at most its budget `B_i`. On each user the highest bid
+wins, ties are broken at random, and the winner **pays its own bid** whether or not the user clicks. User `j`
+clicks advertiser `i`'s ad with probability `f_ij`. The advertisers **do not know** `f_ij` and only see clicks
+on users they won.
+
+When `f` is known, the best response to competing bids `c` is a **0-1 knapsack**: winning user `j` costs
+`c_j + 1` and is worth `f_ij * v - (c_j + 1)`. It is solved exactly by dynamic programming in `O(n B_i)`.
+Every learner in this project plugs an estimate of `f` into the same knapsack.
+
+We relax one assumption at a time:
+
+| Tier | Setting | What we compute |
+|---|---|---|
+| **1** | `f` known | Exact knapsack best responses, reference equilibrium `b*`, social-planner benchmark |
+| **2** | One advertiser learns `f`; opponents fixed at `b*` | Regret of Thompson sampling, UCB, greedy, ε-greedy and a budget-paced learner |
+| **3** | All advertisers learn at once | Equilibrium gap, distance to `b*`, efficiency, revenue, price of learning |
+
+No model is trained offline. Each advertiser learns online, as a combinatorial semi-bandit: per user it keeps
+win and click counts, which feed a UCB index or a Beta posterior.
+
+---
+
+## 2. How to run
+
+Requires Python 3.10+.
 
 ```bash
 pip install -r requirements.txt
-python run_tests.py            # 54 tests: Tier 1, Tier 2, Tier 3, evaluation harness, demo
-python report_numbers.py       # recomputes every number in the final report from results/sweep_*/summary.csv
-python run_demo.py             # live demo (or open demo/index.html in a browser)
+
+python run_tests.py         # 54 tests: Tier 1, Tier 2, Tier 3, evaluation harness, demo
+python report_numbers.py    # recomputes every number in the final report (see Section 4)
+python run_demo.py          # live, animated market using the real agents
 ```
 
-## Results at a glance
+### Single experiments for each tier
 
-All runs use 30 seeds per cell over m ∈ {2,3,5}, n ∈ {5,10,20,50} and budget level κ ∈ {0.1,0.25,0.5,1}
-(48 cells), with click value v = 5 and f_ij ~ Beta(2,5). Shaded bands are 95% confidence intervals.
+```bash
+# Tier 1: knapsack best responses and reference equilibrium b* for one instance
+python run_tier1.py --m 2 --n 4 --kappa 0.5 --v 5.0 --output tier1_benchmark.json
 
-| Tier 2 learner (canonical, T = 1000) | Regret / round | Regret exponent | Cells won |
+# Tier 2: all learners against fixed b* opponents, regret curves
+python run_tier2.py --rounds 200 --trials 5 --plot tier2_regret_curves.png --output tier2_benchmark.json
+python run_tier2.py --learners paced --round-structure cumulative --rounds 200
+
+# Tier 3: every advertiser learns (populations: all_ucb, all_ts, mixed_ucb_ts, mixed_all, learner_vs_equilibrium)
+python run_tier3.py --m 2 --n 4 --population all_ts --rounds 300 --trials 5 --plot tier3_convergence_plots.png
+
+# Evaluation harness: any registered agent, 30 seeds, curves and a summary with 95% CIs
+python run_evaluation.py agents
+python run_evaluation.py run --scenario tier3 --learner thompson --m 2 --n 10 --kappa 0.5 --T 1000
+```
+
+Run each script with `--help` to see all of its options (round structure, α, ε, discount factor, seeds).
+
+### Live demo
+
+```bash
+python run_demo.py --scenario tier2 --learner thompson    # one learner vs. b* opponents
+python run_demo.py --scenario tier3 --learner ucb --m 3   # everyone learns
+python run_demo.py --agents thompson ucb greedy           # head-to-head market
+python run_demo.py --headless --T 200                     # text log only, no window
+```
+
+`demo/index.html` is a JavaScript version of the same demo that runs in any browser without installing anything.
+
+---
+
+## 3. Results
+
+Every result uses 30 seeds per cell over `m ∈ {2,3,5}`, `n ∈ {5,10,20,50}` and budget level `κ ∈ {0.1,0.25,0.5,1}`
+(48 cells), with `f_ij ~ Beta(2,5)` and click value `v = 5`. Shaded bands in the figures are 95% confidence intervals.
+
+**Tier 2: one learner, horizon T = 1000** (means over the 47 cells that have a pure equilibrium)
+
+| Learner | Regret / round | Regret exponent (T = 10³ / 10⁴) | Cells with lowest regret |
 |---|---|---|---|
-| Thompson sampling | **0.49** | **0.33** (0.2 at T = 10^4) | **47 / 47** |
-| UCB, α = 0.5 | 0.73 | 0.46 | – |
-| UCB, α = 2 | 1.77 | 0.73 | 0 |
-| ε-greedy (ε = 0.1) | 1.22 | 0.66 | 0 |
-| Greedy | 2.95 | 0.79 (1.00 at T = 10^4) | 0 |
+| Thompson sampling | **0.49** | **0.33 / ~0.2** | **47 / 47** |
+| UCB, α = 0.5 | 0.73 | 0.46 / 0.23–0.38 | – |
+| UCB, α = 2 | 1.77 | 0.73 / 0.50–0.58 | 0 |
+| ε-greedy (ε = 0.1) | 1.22 | 0.66 / 0.80–0.84 | 0 |
+| Greedy | 2.95 | 0.79 / 0.96–1.00 | 0 |
 
-| Tier 3 (all advertisers learn) | Final eq. gap m = 2 / 3 / 5 | Efficiency loss vs Tier 1 |
-|---|---|---|
-| Known-f best response (control) | 0.76 / 1.42 / 2.37 | 0.04 |
-| Thompson sampling | **0.67 / 1.25** / 2.48 | **0.02** |
-| UCB, α = 2 | 2.32 / 3.67 / 4.93 | 0.23 |
-| Greedy | 4.79 / 4.82 / 4.42 | 0.29 |
+A regret exponent of 1 means linear regret, 0.5 means √T-type, and a value near 0 means close to logarithmic.
 
-**Tier 1: equilibrium efficiency by (m, n, κ).** Scarce budgets cost efficiency even with known click probabilities.
+**Tier 3: all advertisers learn** (canonical budgets, T = 1000)
+
+| Learner | Final equilibrium gap, m = 2 / 3 / 5 | Final efficiency | Efficiency loss vs. Tier 1 |
+|---|---|---|---|
+| Known-f best response (control) | 0.76 / 1.42 / 2.37 | 0.53 | 0.04 |
+| Thompson sampling | **0.67 / 1.25** / 2.48 | **0.56** | **0.02** |
+| UCB, α = 2 | 2.32 / 3.67 / 4.93 | 0.35 | 0.23 |
+| Greedy | 4.79 / 4.82 / 4.42 | 0.29 | 0.29 |
+
+**Findings**
+- **H1 holds.** Regret is sublinear for every learner whose exploration decays. Thompson sampling is best in all 47 cells; greedy's regret is close to linear.
+- **H2 holds.** The gap to equilibrium grows with `m`. Most of the gap is already present with known `f`, because simultaneous best responses cycle.
+- **H3 is not supported.** Scarce budgets lower efficiency through the equilibrium itself, not by slowing learning.
+- **Cumulative (campaign) budgets:** the budget-paced learner is the only one still earning at the end of the campaign, and it has the smallest Tier-3 gap.
+
+### Screenshots
+
+**Tier 1: efficiency of the reference equilibrium.** Scarce budgets cost efficiency even when `f` is known.
 
 ![Tier-1 efficiency heatmap](docs/screenshots/tier1_efficiency_heatmap.png)
 
-**Tier 2: cumulative regret of the single learner** (m = 2, n = 10, κ = 0.5), T = 1000 (left) and T = 10^4 (right).
+**Tier 2: cumulative regret** (m = 2, n = 10, κ = 0.5), T = 1000 (left) and T = 10⁴ (right).
 
 <p>
 <img src="docs/screenshots/tier2_cum_regret_T1000.png" width="49%" alt="Tier-2 cumulative regret, T=1000">
 <img src="docs/screenshots/tier2_cum_regret_T10000.png" width="49%" alt="Tier-2 cumulative regret, T=10000">
 </p>
 
-**Tier 2: Thompson sampling final regret in every cell.**
+**Tier 2: Thompson sampling final regret in every (m, n, κ) cell.**
 
 ![Thompson sampling regret heatmap](docs/screenshots/tier2_thompson_regret_heatmap.png)
 
-**Tier 3: equilibrium gap and allocation efficiency when every advertiser learns** (m = 2, n = 10, κ = 0.5).
+**Tier 3: equilibrium gap and allocation efficiency** (m = 2, n = 10, κ = 0.5).
 
 <p>
 <img src="docs/screenshots/tier3_equilibrium_gap.png" width="49%" alt="Tier-3 equilibrium gap">
 <img src="docs/screenshots/tier3_efficiency.png" width="49%" alt="Tier-3 allocation efficiency">
 </p>
 
-**Tier 3 over T = 10^4:** the gap keeps shrinking for TS and UCB, but not for greedy.
+**Tier 3 over T = 10⁴:** the gap keeps shrinking for Thompson sampling and UCB, but not for greedy.
 
 ![Tier-3 equilibrium gap, T=10^4](docs/screenshots/tier3_equilibrium_gap_T10000.png)
 
-**Live demo** (`python run_demo.py`): bids, wins, clicks, learned vs. true click rates, regret, gap and efficiency.
+**Live demo:** bids, wins, clicks, learned vs. true click rates, regret, gap and efficiency.
 
 ![Live demo](docs/screenshots/live_demo.png)
 
-### Verifying the reported results
+---
 
-Every table and in-text number in the final report is recomputed from the committed sweep summaries by:
+## 4. Checking the numbers in the report
+
+The sweep outputs behind the report are committed in `results/sweep_*/` (`summary.csv`, plus the exact settings in `spec.json`).
 
 ```bash
-python report_numbers.py                 # all sections
-python report_numbers.py --section t2    # t1 | t2 | t3 | rob
+python report_numbers.py                 # every table and in-text number of the final report
+python report_numbers.py --section t2    # one section: t1 | t2 | t3 | rob
 ```
 
-To regenerate the sweeps from scratch (the exact settings are also saved in each `results/sweep_*/spec.json`),
-then rebuild the figures and per-cell tables:
+To rerun the sweeps from scratch, then rebuild the figures and per-cell tables used by the report:
 
 ```bash
 python run_evaluation.py sweep --preset tier1 --T 1000 --out results/sweep_tier1
 python run_evaluation.py sweep --preset paper --T 1000 --structures canonical cumulative \
-    --learners ucb thompson greedy eps_greedy paced --scenarios tier2 tier3 \
-    --out results/sweep_learners                     # ~20 min on 14 cores
+    --learners ucb thompson greedy eps_greedy paced --scenarios tier2 tier3 --out results/sweep_learners
 python run_evaluation.py sweep --preset paper --T 1000 --structures discounted \
-    --learners ucb thompson greedy eps_greedy paced --scenarios tier2 tier3 \
-    --workers 8 --out results/sweep_discounted
+    --learners ucb thompson greedy eps_greedy paced --scenarios tier2 tier3 --out results/sweep_discounted
 python run_evaluation.py sweep --preset paper --T 1000 --structures canonical \
-    --learners ucb_a05 ucb_a1 --scenarios tier2 tier3 \
-    --workers 8 --out results/sweep_ucb_alpha
-python run_evaluation.py sweep --preset paper --T 10000 --m 2 3 --n 10 20 --kappa 0.5 \
-    --structures canonical --learners ucb ucb_a05 thompson greedy eps_greedy \
-    --scenarios tier2 tier3 --workers 8 --out results/sweep_horizon
+    --learners ucb_a05 ucb_a1 --scenarios tier2 tier3 --out results/sweep_ucb_alpha
+python run_evaluation.py sweep --preset paper --T 10000 --m 2 3 --n 10 20 --kappa 0.5 --structures canonical \
+    --learners ucb ucb_a05 thompson greedy eps_greedy --scenarios tier2 tier3 --out results/sweep_horizon
 python run_evaluation.py report --sweep-dir results/sweep_tier1 results/sweep_learners \
     results/sweep_discounted results/sweep_ucb_alpha results/sweep_horizon --report-dir Doc/report
 ```
 
-`report_numbers.py` needs only the committed `summary.csv` files; the large `aggregates.json` files
-(per-round curves, used for the figures) are git-ignored and are recreated by the sweeps.
+The full learner sweep takes about 20 minutes on 14 cores; add `--workers N` to set the number of parallel processes.
+To compile the report, run `pdflatex final_report` twice from `Doc/report/`, or upload `Doc/` to Overleaf.
 
 ---
 
-## 2. Directory Structure
+## 5. Repository layout
 
 ```
-.
-├── src/
-│   ├── agents/
-│   │   ├── base.py                   # BaseAdvertiserAgent abstract class
-│   │   ├── registry.py               # Agent registry used by the evaluation harness
-│   │   ├── reference.py              # Tier-1 reference / oracle agents for the harness
-│   │   ├── tier2_adapters.py         # Registers Tier-2 learners with the harness
-│   │   └── __init__.py
-│   ├── env/
-│   │   ├── auction.py                # BatchedFirstPriceAuction mechanics
-│   │   ├── instance.py               # AuctionInstance & synthetic generators
-│   │   └── __init__.py
-│   ├── tier1/
-│   │   ├── baseline.py               # Tier1Solver & baseline equilibrium agents
-│   │   ├── equilibrium.py            # BRD, Support Enumeration, Fictitious Play
-│   │   ├── knapsack.py               # 0-1 Knapsack DP solver
-│   │   ├── social_planner.py         # First-best welfare planner
-│   │   └── __init__.py
-│   ├── tier2/
-│   │   ├── agents.py                 # UCB, Thompson Sampling, Greedy, Paced
-│   │   ├── simulation.py             # Single-agent simulation engine
-│   │   └── __init__.py
-│   ├── eval/
-│   │   ├── simulator.py, metrics.py  # Harness simulator and metric computation
-│   │   ├── experiment.py, sweep.py   # Scenarios, seeds, parallel (m, n, kappa) sweeps
-│   │   ├── stats.py, plotting.py     # 95% CIs and figures
-│   │   └── report.py                 # LaTeX tables/figures for Doc/report
-│   └── tier3/
-│       ├── convergence.py            # Convergence rate, cycling, Price of Learning
-│       ├── simulation.py             # MultiAgentSimulator & trial/experiment aggregation
-│       └── __init__.py
-├── tests/
-│   ├── test_tier1.py                 # Tier-1 test suite
-│   ├── test_tier2.py                 # Tier-2 test suite
-│   ├── test_tier3.py                 # Tier-3 test suite
-│   └── test_eval.py                  # Evaluation harness test suite
-├── run_tier1.py                      # Tier-1 CLI runner
-├── run_tier2.py                      # Tier-2 CLI runner
-├── run_tier3.py                      # Tier-3 Multi-agent CLI runner
-├── run_evaluation.py                 # Evaluation harness CLI (Phase 4/5)
-├── run_tests.py                      # Consolidated test runner
-├── report_numbers.py                 # Recomputes every number in the final report from results/
-├── run_demo.py                       # Live demo: animated market using the real agents
-├── demo/index.html                   # Browser live demo (no install; JS port of the model)
-├── docs/screenshots/                 # Result figures shown in this README
-├── Agents.md                         # Architecture and specifications
-├── Doc/                              # main.tex (proposal source), report/, presentation/
-├── proposal/                         # Submitted proposal PDF + TA review
-└── pyproject.toml
+src/
+  env/        auction engine (batched first-price, tie-breaking, feedback) and instance generator
+  tier1/      knapsack DP, equilibrium solvers (exhaustive search, BRD, fictitious play), social planner
+  tier2/      learners (UCB, Thompson sampling, greedy, ε-greedy, budget-paced) and single-learner simulation
+  tier3/      multi-agent simulator, convergence-rate and cycling analysis, price of learning
+  agents/     shared agent interface (get_bid / observe / reset) and the agent registry
+  eval/       evaluation harness: metrics, 95% CIs, parameter sweeps, plots, LaTeX tables
+tests/        test suites for every tier, the harness and the demo
+results/      committed sweep summaries used by the report
+Doc/report/   final_report.tex/.pdf, supplementary.tex, figures/, generated/ tables
+Doc/presentation/  slides
+demo/         browser demo
+docs/screenshots/  figures shown in this README
+run_tier1.py, run_tier2.py, run_tier3.py, run_evaluation.py, run_demo.py, run_tests.py, report_numbers.py
+collect_convergence_logs.py   batch collection of Tier-3 convergence logs
+Agents.md                     architecture and agent specifications
 ```
 
 ---
 
-## 3. Project Deliverables & Run Instructions
+## 6. Team and contributions
 
-All deliverables defined in `Doc/main.tex` and `AGENTS.md` are fully implemented and verifiable via the commands below.
+| Member | Assigned task | Status |
+|---|---|---|
+| Vivek Raj | Tier 1: knapsack best response, equilibrium computation, reference `b*` | Fulfilled |
+| Anvit Aggarwal | Tier 2: UCB, Thompson sampling, greedy baselines, budget-paced learner, regret evaluation | Fulfilled |
+| Eshaan Ashish Jaiswal | Tier 3: multi-agent simulator and convergence data | Fulfilled |
+| Gella Naga Sai Krishna | Evaluation harness, sensitivity study, report, slides, demo | Fulfilled |
 
-### 3.0 Consolidated Test Suite Runner
-Runs the Tier-1, Tier-2, Tier-3 and evaluation-harness test suites (via pytest):
-```bash
-python run_tests.py
-```
-Or run each tier's test suite individually:
-```bash
-python tests/test_tier1.py
-python tests/test_tier2.py
-python tests/test_tier3.py
-```
-
----
-
-### 3.1 Deliverable (i): Tier-1 Solver with Equilibrium Computation (Phase 1)
-Solves exact knapsack best responses via DP and computes reference equilibrium profiles $b^*$ via Support Enumeration or Best-Response Dynamics / Fictitious Play:
-```bash
-# Standard 2-advertiser, 4-user instance with budget tightness kappa=0.5
-python run_tier1.py --m 2 --n 4 --kappa 0.5 --v 5.0 --output tier1_benchmark.json
-
-# 3-advertiser, 5-user instance with tighter budget kappa=0.25
-python run_tier1.py --m 3 --n 5 --kappa 0.25 --v 5.0 --output tier1_benchmark_3x5.json
-```
-**Artifact Produced:**
-- `tier1_benchmark.json`: Contains reference equilibrium profile $b^*$, expected profits $p^*$, platform revenue $\mathrm{Rev}(b^*)$, welfare $\mathrm{Wel}(b^*)$, and social planner benchmark.
-
-**CLI Options for `run_tier1.py`:**
-| Flag | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `--m` | `int` | `2` | Number of advertisers |
-| `--n` | `int` | `4` | Number of users |
-| `--kappa` | `float` | `0.5` | Budget tightness $\kappa \in [0.1, 1.0]$ |
-| `--v` | `float` | `5.0` | Value per click $v$ |
-| `--seed` | `int` | `42` | Random seed for instance generation |
-| `--output` | `str` | `tier1_benchmark.json` | Output JSON path |
-| `--load-instance` | `str` | `None` | Path to load pre-existing instance JSON |
-
----
-
-### 3.2 Deliverable (ii): UCB and Thompson Learners with Regret Curves (Phase 2)
-Simulates a single budget-aware learner against stationary opponents playing pure Tier-1 equilibrium bids, verifying sublinear regret:
-```bash
-# Compare all four learners (UCB, TS, Greedy, Eps-Greedy) across 5 seeds
-python run_tier2.py --rounds 200 --trials 5 --plot tier2_regret_curves.png --output tier2_benchmark.json
-
-# Run Thompson Sampling specifically with 500 rounds
-python run_tier2.py --learners thompson --rounds 500 --trials 10
-
-# Robustness check: Discounted variant (gamma = 0.95)
-python run_tier2.py --round-structure discounted --discount-factor 0.95 --rounds 200
-
-# Robustness check: Cumulative budget pacing
-python run_tier2.py --learners paced --round-structure cumulative --rounds 200
-```
-**Artifacts Produced:**
-- `tier2_benchmark.json`: Per-round instantaneous & cumulative regrets, profits, efficiencies, and 95% confidence intervals.
-- `tier2_regret_curves.png`: Comparative regret curves confirming sublinear growth.
-
-**CLI Options for `run_tier2.py`:**
-| Flag | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `--m`, `--n`, `--kappa`, `--v` | - | `2, 4, 0.5, 5.0` | Instance parameters |
-| `--rounds` | `int` | `200` | Horizon $T$ per simulation trial |
-| `--trials` | `int` | `5` | Number of independent random seeds |
-| `--learner-id` | `int` | `0` | Index of learning agent |
-| `--learners` | `list` | `all` | Subset of: `ucb`, `thompson`, `greedy`, `eps_greedy`, `paced` |
-| `--alpha` | `float` | `2.0` | UCB exploration parameter $\alpha$ |
-| `--epsilon` | `float` | `0.1` | $\epsilon$-Greedy exploration parameter |
-| `--round-structure` | `str` | `canonical` | `canonical`, `discounted`, or `cumulative` |
-| `--discount-factor` | `float` | `0.99` | Discount factor $\gamma$ |
-| `--output` | `str` | `tier2_benchmark.json` | Output JSON path |
-| `--plot` | `str` | `tier2_regret_curves.png`| Output plot PNG path |
-
----
-
-### 3.3 Deliverable (iii): Multi-Agent Simulator & Convergence Data (Phase 3 - Eshaan Jaiswal)
-Simulates repeated auctions where all $m$ advertisers learn and bid concurrently in a non-stationary market. Computes equilibrium gap $\varepsilon_t$, distance to equilibrium $\|b^t - b^*\|_1$, per-agent regrets, stability/cycling, and the Price of Learning:
-
-```bash
-# 1. Homogeneous UCB Market (All advertisers use UCB, alpha=2.0)
-python run_tier3.py --m 2 --n 4 --population all_ucb --rounds 300 --trials 5 --plot tier3_convergence_plots.png --output tier3_benchmark.json
-
-# 2. Homogeneous Thompson Sampling Market (All advertisers use TS)
-python run_tier3.py --m 2 --n 4 --population all_ts --rounds 300 --trials 5 --output tier3_benchmark_ts.json
-
-# 3. Mixed UCB vs. Thompson Sampling Market
-python run_tier3.py --m 2 --n 4 --population mixed_ucb_ts --rounds 300 --trials 5
-
-# 4. Heterogeneous Market (m=4: UCB, Thompson Sampling, Greedy, EpsGreedy)
-python run_tier3.py --m 4 --n 4 --population mixed_all --rounds 300 --trials 5
-
-# 5. Online Learner vs. Fixed Tier-1 Equilibrium Opponents
-python run_tier3.py --m 3 --n 5 --population learner_vs_equilibrium --rounds 300 --trials 5
-
-# 6. Cumulative Budget Pacing Structure
-python run_tier3.py --m 2 --n 4 --population all_ucb --round-structure cumulative --rounds 300 --trials 5
-```
-**Artifacts Produced:**
-- `tier3_benchmark.json`: Raw convergence logs containing round-by-round equilibrium gaps $\varepsilon_t$, distances $\|b^t - b^*\|_1$, cumulative regrets $\mathrm{Reg}_T^{(i)}$, market efficiencies, stability analysis, power-law decay rate fits, and the complete Price of Learning vector with 95% confidence intervals.
-- `tier3_convergence_plots.png`: Publication-grade 5-panel figure displaying:
-  1. Equilibrium Exploitability Gap $\varepsilon_t$ vs. Rounds (mean with shaded 95% CI)
-  2. L1 Distance to Tier-1 Equilibrium $\|b^t - b^*\|_1$ vs. Rounds
-  3. Per-Agent Cumulative Regret Growth $\mathrm{Reg}_t^{(i)}$
-  4. Allocation Efficiency $\mathrm{Eff}_t$ & Platform Revenue $\mathrm{Rev}_t$ vs. Tier-1 Baseline
-  5. Advertiser Profit Comparison (Tier 1 Full-Info vs. Tier 3 Multi-Agent)
-
-**CLI Options for `run_tier3.py`:**
-| Flag | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `--m` | `int` | `2` | Number of advertisers |
-| `--n` | `int` | `4` | Number of users |
-| `--kappa` | `float` | `0.5` | Budget tightness $\kappa \in [0.1, 1.0]$ |
-| `--v` | `float` | `5.0` | Value per click $v$ |
-| `--rounds` | `int` | `300` | Horizon $T$ per simulation trial |
-| `--trials` | `int` | `5` | Number of independent simulation seeds |
-| `--population` | `str` | `all_ucb` | Choices: `all_ucb`, `all_ts`, `mixed_ucb_ts`, `mixed_all`, `learner_vs_equilibrium` |
-| `--alpha` | `float` | `2.0` | UCB exploration parameter $\alpha$ |
-| `--epsilon` | `float` | `0.1` | $\epsilon$-Greedy exploration parameter |
-| `--round-structure` | `str` | `canonical` | `canonical`, `discounted`, or `cumulative` |
-| `--discount-factor` | `float` | `0.99` | Discount factor $\gamma$ for discounted variant |
-| `--output` | `str` | `tier3_benchmark.json` | Output JSON path |
-| `--plot` | `str` | `tier3_convergence_plots.png`| Output plot PNG path |
-
----
-
-```bash
-python run_evaluation.py agents                                   # list registered agents
-python run_evaluation.py run --scenario tier2 --learner ucb --m 2 --n 10 --kappa 0.5 --T 2000
-python run_evaluation.py sweep --preset tier1 --T 1000 --out results/sweep_tier1
-python run_evaluation.py sweep --preset paper --out results/sweep_paper   # Tier-2 + Tier-3 learners
-python run_evaluation.py report --sweep-dir results/sweep_tier1 --report-dir Doc/report
-```
-
-Scenarios: `tier1` (everyone plays the Tier-1 reference b*), `tier2` (agent 0 learns, others fixed at b*;
-non-pure Tier-1 instances excluded), `tier3` (everyone runs the learner), `custom` (one agent name per advertiser).
-Round structures: `canonical`, `discounted`, `cumulative` (fluid-LP regret benchmark).
-
-Every run reports, per seed and as mean ± 95% CI over seeds: cumulative regret (and its log-log slope),
-equilibrium gap ε_t, ‖b^t − b*‖₁, allocation efficiency (expected and realized), platform revenue, welfare,
-advertiser profit, and price of learning (Tier-1 value − learned value).
-
-#### Registered learners
-
-The Tier-2 agents in `src/tier2/agents.py` are registered in `src/agents/tier2_adapters.py`:
-`ucb`, `thompson`, `greedy`, `eps_greedy` and `paced` (`CumulativeBudgetPacedAgent`; it gets the real total
-budget under `cumulative`, and `B_i * T` otherwise). The same names work for `tier3` (all advertisers learn).
-
-#### Plugging in a new agent
-
-Implement `src.agents.base.BaseAdvertiserAgent` and register a factory anywhere under `src/tier2/` or
-`src/tier3/` (the harness imports those packages automatically):
-
-```python
-from src.agents.registry import register_agent, AgentContext
-
-@register_agent("ucb")
-def make_ucb(ctx: AgentContext, alpha: float = 2.0):
-    return UCBAgent(ctx.agent_id, ctx.budget, ctx.num_users, ctx.click_value, alpha=alpha, seed=ctx.seed)
-```
-
-`ctx` also carries `horizon`, `round_structure`, `total_budget` (cumulative variant) and, for oracle agents
-only, `true_click_probs` / `reference_bids`. Learners must not read `true_click_probs`.
-Bids must be non-negative integers with `sum <= budget` (and `<=` remaining budget under `cumulative`);
-an infeasible bid vector is replaced by zeros and counted in the `violations` column.
-
-#### Sensitivity studies in the final report
-
-| Sweep dir | What it covers |
-|---|---|
-| `results/sweep_tier1` | Tier 1 + known-f best-response dynamics over the full (m, n, kappa) grid |
-| `results/sweep_learners` | 5 learners, Tier 2 + Tier 3, canonical and cumulative budgets, T = 1000 |
-| `results/sweep_discounted` | same learners under the discounted round structure (gamma = 0.999) |
-| `results/sweep_ucb_alpha` | UCB exploration sensitivity, alpha in {0.5, 1} (`ucb_a05`, `ucb_a1`) |
-| `results/sweep_horizon` | long horizon T = 10^4 for m in {2, 3}, n in {10, 20}, kappa = 0.5 |
-
-The exact commands are in the Reproducibility section of the report. Rebuild all report assets with:
-
-```bash
-python run_evaluation.py report --sweep-dir results/sweep_tier1 results/sweep_learners     results/sweep_discounted results/sweep_ucb_alpha results/sweep_horizon --report-dir Doc/report
-```
-
-### 3.5 Deliverable (vi): Final Report & Presentation
-
-- **Final report (8 pages): `Doc/report/final_report.tex`.** The project-review submission completed with
-  Methodology (algorithms in detail), Results (figures, tables, discussion of H1-H3) and Contribution sections.
-- Earlier 6-page version: `Doc/report/report.tex`.
-- Supplementary material: `Doc/report/supplementary.tex`. Every per-cell table and figure with 95% CIs,
-  pulled in from `Doc/report/generated/` and `Doc/report/figures/` (regenerated by `run_evaluation.py report`).
-- Presentation: `Doc/presentation/slides.tex` (Beamer; reuses the report figures and includes a live-demo slide).
-- Compile with `pdflatex` from each file's own directory, or upload `Doc/` to Overleaf.
-- Submitted proposal and the TA's review: `proposal/` (as the TA asked, the report keeps future work short and focuses on the three tiers).
-
-### 3.6 Live Demo
-
-Watch a market learn round by round. The Python demo drives the project's real agents, auction engine and
-metrics; the browser demo is a dependency-free JavaScript port for presenting without a Python setup.
-
-```bash
-# Tier 2: one Thompson-sampling learner vs. opponents fixed at the Tier-1 equilibrium b*
-python run_demo.py --scenario tier2 --learner thompson
-
-# Tier 3: every advertiser runs UCB at the same time
-python run_demo.py --scenario tier3 --learner ucb --m 3 --n 8
-
-# Head-to-head market, one registered agent per advertiser
-python run_demo.py --agents thompson ucb greedy
-
-# Text-only log (no window), or save the animation
-python run_demo.py --headless --T 200
-python run_demo.py --save demo.gif --T 150
-```
-
-Panels: true click probabilities with b*, the bids submitted this round (winners outlined, clicks starred),
-the focal learner's empirical click rates vs. the truth, cumulative regret per advertiser, equilibrium gap, and
-allocation efficiency against the Tier-1 reference.
-
-Browser version: open `demo/index.html` (double-click works offline). It has the same scenarios plus a custom mix,
-with Play / Step / Run-to-end controls and adjustable m, n, kappa, T and seed.
-
----
-
-## 4. Summary of Output Metrics
-
-| Metric | Formula / Definition | Evaluated in | Target Behavior |
-| :--- | :--- | :--- | :--- |
-| **Cumulative Regret** | $\mathrm{Reg}_T^{(i)} = \sum_{t=1}^T \left( p_i^*(c_{-i}^t) - p_i(b_i^t, b_{-i}^t) \right)$ | Tier 2 & Tier 3 | Sublinear $o(T)$ growth |
-| **Equilibrium Gap** | $\varepsilon_t = \max_i \left( \max_{b_i'} p_i(b_i', b_{-i}^t) - p_i(b^t) \right)$ | Tier 1 & Tier 3 | $\varepsilon_t \to 0$ or small cycle bound |
-| **Equilibrium Distance**| $\|b^t - b^*\|_1 = \sum_{i,j} |b_{ij}^t - b_{ij}^*|$ | Tier 3 | Empirical convergence to $b^*$ |
-| **Allocation Efficiency**| $\mathrm{Eff}_t = \frac{1}{n} \sum_{j=1}^n \sum_{i \in \arg\max_k f_{kj}} q_{ij}(b^t)$ | All Tiers | Near-optimal user matching |
-| **Platform Revenue** | $\mathrm{Rev}(b^t) = \sum_{i,j} q_{ij}(b^t) b_{ij}^t$ | All Tiers | Platform revenue generation |
-| **Price of Learning** | $\Delta_{\mathrm{metric}} = \mathrm{Metric}(\text{Tier 1}) - \mathrm{Metric}(\text{Tier 3})$ | Tier 3 | Economic loss from online learning |
-| **Power-Law Decay** | $\varepsilon_t \approx c \cdot t^{-\beta}$ | Tier 3 | $\beta > 0$ indicates decay towards equilibrium |
-| **Stability State** | Fixed point, Limit cycle, or Wandering | Tier 3 | Detects asymptotic dynamical behavior |
+Section 6 of the report gives the details.

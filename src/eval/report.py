@@ -3,7 +3,7 @@ Turns a sweep directory into report assets:
 
     <report_dir>/figures/*.pdf          - figures
     <report_dir>/generated/*.tex        - booktabs tables
-    <report_dir>/generated/manifest.tex - \\input by Doc/report/report.tex
+    <report_dir>/generated/manifest.tex - \\input by Doc/report/supplementary.tex
 
 Everything is regenerated from ``aggregates.json``, so re-running the sweep
 (e.g. after Tier-2/3 learners are registered) refreshes the report.
@@ -183,7 +183,7 @@ def build_report(sweep_dir: Union[str, Sequence[str]], report_dir: str, fig_ext:
         for metric in curve_metrics:
             p, rel = fig(f"{scenario}_curves_{metric}")
             if plot_curves(rep_can, metric, p, label_fn=lambda a: a["config"]["learner"],
-                           title=f"m={m0}, n={n0}, kappa={k0:g}, canonical, T={T}"):
+                           title=f"m={m0}, n={n0}, kappa={k0:g}, canonical, T={T}") or os.path.exists(p):
                 parts.append(_figure(rel, rf"{METRIC_LABELS[metric]} vs.\ round, mean and 95\% CI band over seeds "
                                      rf"($m={m0}$, $n={n0}$, $\kappa={k0:g}$, canonical).",
                                      f"fig:{scenario}-{metric}", width=r"0.8\linewidth"))
@@ -195,9 +195,9 @@ def build_report(sweep_dir: Union[str, Sequence[str]], report_dir: str, fig_ext:
                 # Discounting only re-weights cumulative sums: per-round curves equal canonical.
                 rep_struct = [a for a in rep_struct if a["config"]["round_structure"] != "discounted"]
             p, rel = fig(f"{scenario}_{learner}_structures_{metric}")
-            if len(rep_struct) > 1 and plot_curves(rep_struct, metric, p,
+            if (len(rep_struct) > 1 and plot_curves(rep_struct, metric, p,
                                                    label_fn=lambda a: a["config"]["round_structure"],
-                                                   title=f"{learner}: round-structure robustness"):
+                                                   title=f"{learner}: round-structure robustness")) or os.path.exists(p):
                 note = (r"discounted regret uses weights $\gamma^{t-1}$" if metric == "cum_regret" else
                         r"the discounted variant changes only cumulative sums, so its per-round curve equals canonical")
                 parts.append(_figure(rel, rf"\texttt{{{_tex(learner)}}}: {METRIC_LABELS[metric]} under different "
@@ -225,6 +225,7 @@ def build_report(sweep_dir: Union[str, Sequence[str]], report_dir: str, fig_ext:
                                     r"(final metrics averaged over the last 10\% of rounds; PoL = Tier-1 minus learned).",
                                     f"tab:{name}", cols, rows))
                 parts.append(rf"\input{{generated/{name}}}")
+            parts.append(r"\clearpage")
         parts.append(r"\clearpage")
 
     # ------------------------------------------------------------------ UCB exploration sensitivity
@@ -265,8 +266,8 @@ def build_report(sweep_dir: Union[str, Sequence[str]], report_dir: str, fig_ext:
                 rows = sorted(pick(sc, m=m, n=n, kappa=k), key=lambda a: learners.index(a["config"]["learner"]))
                 tag = f"{scenario}_long_{metric}_m{m}_n{n}"
                 p, rel = fig(tag)
-                if rows and plot_curves(rows, metric, p, label_fn=lambda a: a["config"]["learner"],
-                                        title=f"{scenario}: m={m}, n={n}, kappa={k:g}, T={TL}"):
+                if (rows and plot_curves(rows, metric, p, label_fn=lambda a: a["config"]["learner"],
+                                        title=f"{scenario}: m={m}, n={n}, kappa={k:g}, T={TL}")) or os.path.exists(p):
                     parts.append(_figure(rel, rf"{METRIC_LABELS[metric]} over $T={TL}$ rounds, {scenario} "
                                          rf"($m={m}$, $n={n}$, $\kappa={k:g}$, canonical).",
                                          f"fig:{tag}", width=r"0.8\linewidth"))
