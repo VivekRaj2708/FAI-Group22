@@ -18,5 +18,13 @@ results/sweep_discounted/per_seed.csv
 # Compiled report PDFs (regenerable via pdflatex; figures in figures/ remain tracked)
 Doc/report/*.pdf
 !Doc/report/figures/*.pdf
+!Doc/report/final_report.pdf
 
-
+# Example outputs of run_tier1/2/3.py and run_demo.py (regenerable; not used by the report)
+/tier*_benchmark*.json
+/tier*_regret_curves.png
+/tier*_convergence_plots.png
+/demo.gif
+*.nav
+*.snm
+*.toc
