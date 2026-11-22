@@ -261,6 +261,48 @@ def test_tier2_experiment_serialization(standard_instance):
             os.remove(tmp_path)
 
 
+def test_learner_starvation_and_unwinnable_market():
+    """Verify all 5 learners handle an unwinnable market gracefully (opponents bid above budget)."""
+    from src.tier2.agents import (
+        UCBAgent,
+        ThompsonSamplingAgent,
+        GreedyAgent,
+        EpsGreedyAgent,
+        CumulativeBudgetPacedAgent,
+    )
+
+    n, B, v = 4, 2, 5.0
+    agents = [
+        UCBAgent(agent_id=0, num_users=n, budget=B, click_value=v, alpha=2.0),
+        ThompsonSamplingAgent(agent_id=0, num_users=n, budget=B, click_value=v),
+        GreedyAgent(agent_id=0, num_users=n, budget=B, click_value=v),
+        EpsGreedyAgent(agent_id=0, num_users=n, budget=B, click_value=v, epsilon=0.1),
+        CumulativeBudgetPacedAgent(
+            agent_id=0,
+            total_budget=B * 10,
+            num_users=n,
+            total_rounds=10,
+            click_value=v,
+            per_round_max_budget=B,
+        ),
+    ]
+
+    for agent in agents:
+        agent.reset()
+        for t in range(1, 10):
+            bids = agent.get_bid(t=t)
+            assert sum(bids) <= B, f"{agent.__class__.__name__} exceeded budget: {bids}"
+            # Opponent bids 5 on all users (strictly higher than learner budget B=2)
+            c_comp = [5] * n
+            # Learner loses all users, observes 0 wins
+            agent.observe(
+                won=[0] * n,
+                clicks=[0] * n,
+                payments=[0] * n,
+                competing_bids=c_comp,
+            )
+
+
 if __name__ == "__main__":
     inst = standard_instance()
     test_ucb_agent_probing_and_budget_constraint(inst)

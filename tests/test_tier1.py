@@ -177,6 +177,69 @@ def test_tier1_solver_and_json_serialization():
             os.remove(tmp_path)
 
 
+def test_exact_best_response_with_ties_against_brute_force():
+    """Verify check_tie_deviations.exact_best_response against exhaustive enumeration."""
+    from check_tie_deviations import exact_best_response
+
+    inst = AuctionInstance(
+        num_advertisers=2,
+        num_users=3,
+        budgets=[4, 4],
+        click_probabilities=[[0.8, 0.4, 0.2], [0.5, 0.5, 0.5]],
+        click_value=5.0,
+    )
+    engine = BatchedFirstPriceAuction(inst)
+    profile = [[0, 0, 0], [1, 2, 0]]  # opponent bids [1, 2, 0]
+
+    # Multiple-choice knapsack DP in check_tie_deviations
+    dp_val = exact_best_response(engine, inst, profile, i=0)
+
+    # Brute force search over all legal integer bid vectors for player 0
+    all_bids = generate_pure_strategies(num_users=3, budget=4)
+    brute_max = -1.0
+    for b0 in all_bids:
+        test_prof = [b0, profile[1]]
+        util0 = engine.expected_utilities(test_prof)[0]
+        if util0 > brute_max:
+            brute_max = util0
+
+    assert abs(dp_val - brute_max) < 1e-9, f"DP {dp_val} != Brute Force {brute_max}"
+
+
+def test_multi_way_tie_and_zero_budget_boundaries():
+    """Verify auction mechanics on multi-way ties and boundary zero budgets."""
+    # 1. 3-way symmetric tie
+    inst3 = AuctionInstance(
+        num_advertisers=3,
+        num_users=2,
+        budgets=[5, 5, 5],
+        click_probabilities=[[0.6, 0.4], [0.6, 0.4], [0.6, 0.4]],
+        click_value=5.0,
+    )
+    engine3 = BatchedFirstPriceAuction(inst3)
+    bids = [[2, 1], [2, 1], [2, 1]]
+    qs = engine3.compute_winning_probabilities(bids)
+    for j in range(2):
+        for i in range(3):
+            assert abs(qs[i][j] - 1.0 / 3.0) < 1e-9
+        assert abs(sum(qs[i][j] for i in range(3)) - 1.0) < 1e-9
+
+    # 2. Zero budget
+    zero_val, zero_items = solve_knapsack_dp([1, 2], [1.0, 2.0], capacity=0)
+    assert zero_val == 0.0
+    assert zero_items == []
+
+    # 3. Zero click rates
+    res = compute_best_response_knapsack(
+        f_i=[0.0, 0.0],
+        competing_bids=[0, 0],
+        budget=5,
+        click_value=5.0,
+    )
+    assert res.bids == [0, 0]
+    assert res.expected_profit == 0.0
+
+
 if __name__ == "__main__":
     for name, func in list(globals().items()):
         if name.startswith("test_") and callable(func):

@@ -53,7 +53,7 @@ Requires Python 3.10+.
 ```bash
 pip install -r requirements.txt
 
-python run_tests.py         # 54 tests: Tier 1, Tier 2, Tier 3, evaluation harness, demo
+python run_tests.py         # 57 tests: Tier 1, Tier 2, Tier 3, evaluation harness, demo
 python report_numbers.py    # recomputes every number in the final report (see Section 4)
 python check_tie_deviations.py   # checks the Tier-1 profiles against tie-bid deviations (about 10 s)
 python run_demo.py          # live, animated market using the real agents
